@@ -59,11 +59,11 @@ class _SnapshotTreeState extends State<SnapshotTree> {
           children: [
             Text(
               '${widget.entries.length} 个条目',
-              style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+              style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
             ),
             if (widget.entries.length > 5000) ...[
               const SizedBox(width: 10),
-              const Expanded(
+               Expanded(
                 child: Text(
                   '快照较大，已一次加载；建议用路径过滤缩小范围。',
                   style: TextStyle(fontSize: 10.5, color: AppColors.amber),
@@ -75,7 +75,7 @@ class _SnapshotTreeState extends State<SnapshotTree> {
         const SizedBox(height: 6),
         Expanded(
           child: rows.isEmpty
-              ? const Center(
+              ?  Center(
                   child: Text(
                     '没有匹配的文件',
                     style: TextStyle(fontSize: 12, color: AppColors.faint),
@@ -262,7 +262,7 @@ class _TreeRow extends StatelessWidget {
               if (!node.isDir)
                 Text(
                   formatBytes(node.size),
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontFamily: 'Menlo',
                     fontSize: 10,
                     color: AppColors.faint,
@@ -274,7 +274,7 @@ class _TreeRow extends StatelessWidget {
                   '→ ${node.target}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: AppColors.faint),
+                  style:  TextStyle(fontSize: 10, color: AppColors.faint),
                 ),
               ],
             ],

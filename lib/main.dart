@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'app/app_controller.dart';
+import 'app/window_title.dart';
 import 'core/app_paths.dart';
 import 'core/profile_store.dart';
 
@@ -26,7 +27,7 @@ Future<void> _configureWindow(
   GlobalKey<NavigatorState> navigatorKey,
 ) async {
   try {
-    await windowManager.ensureInitialized();
+    await initAppWindow();
     const options = WindowOptions(
       size: Size(1240, 840),
       minimumSize: Size(1000, 680),

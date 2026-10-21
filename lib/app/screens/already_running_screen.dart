@@ -26,7 +26,7 @@ class AlreadyRunningScreen extends StatelessWidget {
             children: [
               const AppMark(size: 44),
               const SizedBox(height: 20),
-              const Text(
+               Text(
                 '应用已经在运行',
                 style: TextStyle(
                   fontSize: 20,
@@ -35,7 +35,7 @@ class AlreadyRunningScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+               Text(
                 '同一时间只允许一个实例操作备份库，避免控制锁与写入冲突。请切换到已打开的窗口。',
                 style: TextStyle(
                   fontSize: 13,

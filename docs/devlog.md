@@ -5,6 +5,105 @@
 
 ---
 
+## 2026-10-22 01:25 · 修复 `flutter run` sidecar 注入 + Apple HIG 设计打磨
+
+### 目标
+
+1. `flutter run -d macos` 不再因为找不到 sidecar 停在“无法启动”页。
+2. 按 [apple-design skill](https://github.com/dickwu/apple-design-skill) 做一次完整的 UI/交互审计与改进，并同步完善功能。
+
+### 一、sidecar 注入修复
+
+**问题**：Debug 构建的 `Contents/Resources/bin/` 为空，`CoreLocator` 只能找到 `Contents/MacOS/eimmortal`，于是报“找不到核心 sidecar”。
+
+**修复**：
+
+- 把核心仓库固定为 git submodule：`third_party/encry-immortals` @ `v0.1.5`；移除 `.gitignore` 里的排除项。
+- 新增 `tool/xcode_debug_sidecar.sh`，并在 Runner 的 build phases 末尾加入 `Debug/Profile Sidecar` phase：
+  - Debug 时优先使用 `EIMMORTAL_CORE_PATH`；
+  - 否则从 submodule 用 `CGO_ENABLED=0` 构建 host 架构 sidecar；
+  - 复制到 `Contents/Resources/bin/eimmortal`，ad-hoc 签名；
+  - Release 由 `tool/build_macos.sh` 统一签名 + 哈希固定。
+- `setAppWindowTitle` 前增加 `initAppWindow()` 守卫：window_manager 未初始化时绝不触碰窗口 API，避免 Swift 侧 `mainWindow!` 崩溃。
+- Release 构建改用 submodule 的 `v0.1.5`，hash 变为 `3f42019c…9302faff`，bundle 校验 `integrity: verified`。
+
+**证据**：截图 [settings](assets/m1-settings-light.jpg) 的 sidecar 路径已经是
+`…/Debug/Encry Immortals.app/Contents/Resources/bin/eimmortal`，说明 Debug phase 生效；plain `flutter run` 启动无错误。
+
+### 二、Apple HIG 审计（阅读的参考）
+
+按 skill 的 always-load + desktop 集合阅读：
+`accessibility.md`、`layout.md`、`typography.md`、`color.md`、`designing-for-macos.md`、
+`sidebars.md`、`toolbars.md`、`windows.md`、`settings.md`、`the-menu-bar.md`、`keyboards.md`、
+`buttons.md`、`progress-indicators.md`。
+
+**主要发现**
+
+| 严重度 | 问题 | 依据 |
+|---|---|---|
+| Critical | `faint` 文字 #63718B 在卡片上只有 3.40–3.95:1，小字号不达 4.5:1 | `accessibility.md › Vision`；`typography.md › Ensuring legibility` |
+| High | 只有深色外观，没有跟随系统浅色/深色 | `color.md › Best practices`；`designing-for-macos.md` |
+| High | 没有原生菜单栏，所有命令只能点页面按钮；快捷键缺失 | `the-menu-bar.md › Anatomy`；`toolbars.md › Desktop`；`keyboards.md` |
+| High | 关键操作“锁定”放在侧边栏底部；窗口标题是应用名 | `sidebars.md › Desktop`；`windows.md › Best practices`；`toolbars.md › Titles` |
+| High | 默认 Flutter 应用图标；整体接近“近黑 + 酸性绿”生成模板 | skill Craft lens；`app-icons.md` |
+| Medium | 9.5pt 小字低于 macOS 10pt 最小值；大量重复的“锚点”信息 | `typography.md › Ensuring legibility`；`layout.md › Visual hierarchy` |
+
+### 三、已实施的改进
+
+1. **系统浅色/深色**：`AppColors` 改为语义色板，跟随 `platformBrightness`，无应用内主题开关；浅色不是简单反色，而是羊皮纸底 + 深黄铜。
+2. **可访问性**：
+   - 对比度全部 ≥ 4.5:1，新增 `test/app/theme_contrast_test.dart` 强制两种外观都过；
+   - 最小字号提升到 10pt；控件保持 macOS 紧凑命中区；
+   - 状态同时使用图标+文字，不用颜色单独表达；
+   - 过渡动画尊重 `MediaQuery.disableAnimations`。
+3. **桌面惯例**：
+   - 原生菜单栏：应用/文件/编辑/显示/操作/窗口/帮助；含 About、Settings…、Quit、编辑标准项、全屏/最小化；
+   - 快捷键：⌘1–5 切换页面、⌘⇧B 备份、⌘⇧R 恢复、⌘Y 校验、⌘R 刷新、⌘L 锁定、⌘, 设置；
+   - 窗口标题改为当前内容（概览/备份/…），不再用应用名；
+   - 锁定与设置移到侧边栏顶部“更多”菜单 + 应用菜单，底部只保留版本等非关键信息；
+   - 设置页增加“完成”，⌘, 可进入。
+4. **视觉识别**：
+   - 黄铜主操作、绿色“已验证”、琥珀警告、红色危险；
+   - 新增 `ChainSeal`：由 `anchor_short` 与 verified 数据驱动的“封印”，替代重复的锚点行；
+   - 应用图标改为“封印 + 钥匙孔”，`tool/generate_icons.py` 生成 macOS 全尺寸 + Windows ICO；
+   - 字体仍是系统 SF + Menlo 数据字体，层级由字号/字重/颜色承担。
+5. **功能完善**：
+   - 刷新现在是真实命令（菜单/⌘R 会触发 Dashboard/History/Restore 重新拉取）；
+   - 写锁状态、备份/恢复预检、成功色语义与浅色主题统一；
+   - debug sidecar 自动注入，首次运行不再需要手工导出环境变量。
+
+### 四、验证
+
+```text
+flutter analyze                         No issues found
+flutter test                            62 passed, 3 skipped（集成默认跳过）
+theme contrast (dark + light)           全部 ≥ 4.5:1
+真实 sidecar integration                3 passed（含 13 步垂直切片、完整链路、AppController）
+flutter build macos --debug             成功；Debug phase 注入 sidecar
+flutter build macos --release           53.7 MB，core v0.1.5
+tool/verify_bundle.dart                 source=bundle, integrity=verified
+```
+
+新增截图：[onboarding](assets/m1-onboarding-light.jpg)（浅色）、[dashboard](assets/m1-dashboard.jpg)（深色）、
+[dashboard 浅色](assets/m1-dashboard-light.jpg)、[unlock](assets/m1-unlock-light.jpg)、[settings 浅色](assets/m1-settings-light.jpg)。
+
+### 五、剩余问题 / 取舍
+
+- [ ] 设置仍是主窗口内的页面，不是独立的 fixed-toolbar Settings 窗口；侧边栏也不支持手动隐藏。
+- [ ] 菜单里的“备份/校验/恢复”是导航命令，参数仍需在页面确认；没有把“开始备份”做成菜单直接执行。
+- [ ] Edit 菜单的 Cut/Copy/Paste 通过 `Actions.maybeInvoke` 转发，尚未逐项手工验证焦点不在文本框时的行为。
+- [ ] Windows 宿主构建、GUI 子系统 stdio、Windows 控制锁未实测；仅 ad-hoc 签名，未公证。
+- [ ] 空闲自动锁定、上次中断状态持久化、大快照分页仍未做。
+
+### 六、下一步
+
+1. Windows CI/实机验证 + Authenticode + 安装器。
+2. 设置窗口化、侧边栏显示/隐藏、菜单动作直接执行。
+3. Developer ID + notarytool + stapling。
+4. 空闲自动锁定与启动时“上次中断”恢复提示。
+
+---
+
 ## 2026-10-21 23:18 · M1 MVP 完成：从演示壳层到真实产品流程
 
 ### 目标与范围

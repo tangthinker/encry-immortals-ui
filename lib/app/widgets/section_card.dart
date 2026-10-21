@@ -194,7 +194,7 @@ class InfoRow extends StatelessWidget {
             width: 118,
             child: Text(
               label,
-              style: const TextStyle(
+              style:  TextStyle(
                 fontSize: 12,
                 color: AppColors.faint,
                 height: 1.5,
@@ -208,7 +208,7 @@ class InfoRow extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               copiedHint!,
-              style: const TextStyle(fontSize: 11, color: AppColors.faint),
+              style:  TextStyle(fontSize: 11, color: AppColors.faint),
             ),
           ],
         ],
@@ -247,7 +247,7 @@ class KeyValueChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AppColors.faint),
+            style:  TextStyle(fontSize: 11, color: AppColors.faint),
           ),
           const SizedBox(width: 8),
           Text(
@@ -269,7 +269,7 @@ class NoticeBanner extends StatelessWidget {
   const NoticeBanner({
     required this.message,
     this.title,
-    this.color = AppColors.amber,
+    this.color,
     this.icon = Icons.info_outline_rounded,
     this.action,
     super.key,
@@ -277,23 +277,24 @@ class NoticeBanner extends StatelessWidget {
 
   final String message;
   final String? title;
-  final Color color;
+  final Color? color;
   final IconData icon;
   final Widget? action;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = color ?? AppColors.amber;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
+        color: effectiveColor.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: effectiveColor.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 17, color: color),
+          Icon(icon, size: 17, color: effectiveColor),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -305,14 +306,14 @@ class NoticeBanner extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: color,
+                      color: effectiveColor,
                     ),
                   ),
                   const SizedBox(height: 3),
                 ],
                 Text(
                   message,
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontSize: 12,
                     height: 1.55,
                     color: AppColors.muted,
@@ -353,7 +354,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
+            style:  TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
@@ -363,7 +364,7 @@ class EmptyState extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style:  TextStyle(
               fontSize: 12,
               height: 1.6,
               color: AppColors.faint,

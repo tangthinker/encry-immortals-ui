@@ -2,9 +2,9 @@
 
 [`encry-immortals`](https://github.com/tangthinker/encry-immortals)（eimmortal）的桌面客户端，目标平台 **macOS 12+ / Windows 10+**。
 
-> 状态：**M1 MVP 功能范围已完成**（2026-10-21）。已实现创建/加入库、解锁、仪表盘、备份、历史、恢复、校验、设置与 Key 导出；
-> macOS release 已带签名 sidecar 并验证 bundle 内 SHA-256。Windows 构建脚本已提供，但尚未在 Windows 宿主实测；
-> Developer ID 公证与 Authenticode 签名仍属于发布阶段工作。
+> 状态：**M1 MVP + Apple HIG 设计打磨**（2026-10-22）。创建/加入库、解锁、仪表盘、备份、历史、恢复、校验、设置与 Key 导出均已可用；
+> 遵循 macOS 系统浅色/深色外观，提供原生菜单栏与快捷键；release sidecar 固定 SHA-256 并验证。
+> Windows 构建脚本已提供但尚未在 Windows 宿主实测；Developer ID 公证与 Authenticode 签名仍属于发布阶段工作。
 >
 > 技术结论见 [技术选型](docs/tech-selection.md)，进程与 JSON 契约见 [集成契约](docs/integration-contract.md)，
 > 每轮开发记录见 [开发日志](docs/devlog.md)。
@@ -13,8 +13,11 @@
 
 ![仪表盘](docs/assets/m1-dashboard.jpg)
 
-更多界面：[解锁](docs/assets/m1-unlock.jpg) · [备份](docs/assets/m1-backup.jpg) · [历史](docs/assets/m1-history.jpg) ·
-[恢复](docs/assets/m1-restore.jpg) · [校验](docs/assets/m1-verify.jpg) · [设置](docs/assets/m1-settings.jpg)。
+![浅色外观](docs/assets/m1-dashboard-light.jpg)
+
+更多界面：[解锁](docs/assets/m1-unlock.jpg) · [解锁（浅色）](docs/assets/m1-unlock-light.jpg) · [备份](docs/assets/m1-backup.jpg) ·
+[历史](docs/assets/m1-history.jpg) · [恢复](docs/assets/m1-restore.jpg) · [校验](docs/assets/m1-verify.jpg) ·
+[设置](docs/assets/m1-settings.jpg) · [设置（浅色）](docs/assets/m1-settings-light.jpg)。
 
 ## 已实现功能
 
@@ -30,8 +33,26 @@
 | 校验 | `verify --sample N` / `--deep` 与 `doctor --chain`，展示 PASS/WARN/FAIL、缺失/损坏/抽样失败 |
 | 设置 | 查看 profile/路径/核心完整性；修改 `session_max_mib`；重新验证密码后导出 Armor Key；写锁诊断；立即锁定；移除本地配置 |
 | 应用保护 | 单实例文件锁；关闭窗口时若命令仍在运行会阻止退出并确认取消；全命令串行队列 |
+| 桌面体验 | 原生菜单栏（应用/文件/编辑/显示/操作/窗口/帮助）、⌘1–5/⌘⇧B/⌘, 等快捷键、内容化窗口标题、侧边栏顶部更多菜单 |
 
-界面为纯色深色主题，**不使用任何渐变**；不包含截图/自动自检等调试功能。
+界面**不使用任何渐变**，跟随系统浅色/深色外观；不包含截图/自动自检等调试功能。
+
+## 设计语言
+
+- **方向**：把“锚点/封印”作为产品的签名元素——仪表盘健康卡展示由 `status --chain` 数据驱动的 `ChainSeal`，
+  不是装饰性插画。
+- **色彩**：深色为暖墨底 + 黄铜主操作 + 绿色“已验证 + 琥珀警告 + 红色危险；浅色为羊皮纸底 + 更深的黄铜/绿色。
+  颜色均为语义角色，不硬编码系统色；系统外观切换即跟随，没有应用内主题开关。
+- **对比度**：文字/状态色在背景与卡片表面的 WCAG AA 对比度由 `test/app/theme_contrast_test.dart` 强制校验
+  （小字号要求 ≥ 4.5:1）。
+- **层级**：系统字体负责导航/控件，Menlo 负责路径、hash、seq；桌面最小字号 10pt；控件保持 macOS 的紧凑命中区。
+- **桌面惯例**：原生菜单栏、⌘1–5/⌘⇧B/⌘⇧R/⌘L/⌘, 等快捷键、内容化窗口标题、侧边栏顶部更多菜单；
+  锁定不再放在侧边栏底部。
+- **图标**：`tool/generate_icons.py` 生成无渐变的“封印 + 钥匙孔”应用图标，macOS 全套尺寸 + Windows `.ico`。
+
+参考 Apple Human Interface Guidelines 与 [apple-design skill](https://github.com/dickwu/apple-design-skill)：
+`accessibility`、`layout`、`typography`、`color`、`designing-for-macos`、`sidebars`、`toolbars`、`windows`、
+`settings`、`the-menu-bar`、`keyboards`、`buttons`、`progress-indicators`。
 
 ## 安全模型
 
@@ -50,26 +71,28 @@
 ### 前置
 
 - Flutter 3.47.5 / Dart 3.13.4
-- Xcode + CocoaPods（macOS）
-- Go 1.27+（仅构建 sidecar 时需要）
-- 上游核心仓库（当前基线 `v0.1.5-4-g340cade`，脚本会记录实际版本）
+- Xcode + Command Line Tools（macOS）
+- Go 1.27+（Debug sidecar 自动构建需要）
+- 上游核心仓库以 git submodule 固定在 `third_party/encry-immortals`（tag `v0.1.5`）
 
 ### 运行（开发模式）
 
 ```bash
+git submodule update --init --recursive
 flutter --no-version-check pub get
-
-EIMMORTAL_CORE_PATH=/Users/tangthinker/code/go/encry-immortals/bin/eimmortal \
-  flutter --no-version-check run -d macos
+flutter --no-version-check run -d macos
 ```
 
-`EIMMORTAL_CORE_PATH` 只在 debug 构建生效；`flutter --version` 的 GitHub 版本检查在本机会卡住，统一使用 `--no-version-check`。
+Debug 构建的 Xcode phase（`tool/xcode_debug_sidecar.sh`）会从 submodule 构建 sidecar 并放进
+`Contents/Resources/bin/eimmortal`，因此 **不需要手动导出** `EIMMORTAL_CORE_PATH`。如果 Go 不在 PATH，
+可以用 `./tool/build_core.sh` 生成缓存，或显式设置 `EIMMORTAL_CORE_PATH` 指向本地 sidecar。
+`flutter --version` 的 GitHub 版本检查在本机会卡住，统一使用 `--no-version-check`。
 
 ### 测试
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                         # 单元 + 组件测试，不需要 sidecar
+flutter --no-version-check test                         # 62 个单元/组件测试，不需要 sidecar
 flutter --no-version-check test test/core test/app      # 只跑非集成测试
 
 # 真实链路：创建 → 备份 → 历史 → 恢复 → 校验 → 加入库
@@ -87,9 +110,11 @@ dart run tool/vertical_slice.dart /path/to/eimmortal
 ### 构建 macOS release（带 sidecar）
 
 ```bash
-EIMMORTAL_CORE_REPO=/Users/tangthinker/code/go/encry-immortals \
-  ./tool/build_macos.sh
+./tool/build_macos.sh
 ```
+
+默认使用 `third_party/encry-immortals`；如需临时使用另一个核心 checkout，可设置
+`EIMMORTAL_CORE_REPO=/path/to/encry-immortals`。
 
 脚本会：
 
@@ -133,7 +158,7 @@ lib/
   app/
     app_controller.dart     启动/单实例/核心校验/profile/解锁状态机
     screens/                onboarding、解锁、主壳层与六个功能页
-    widgets/                卡片、状态、日志、文件树
+    widgets/                卡片、状态、日志、文件树、ChainSeal
   core/
     core_gateway.dart       sidecar 进程 IO、JSON、退出码、取消
     core_models.dart        CLI JSON 模型
@@ -149,6 +174,8 @@ tool/
   build_core.sh             sidecar 构建 + 哈希
   build_macos.sh            release app + 签名 + 校验
   build_windows.ps1         Windows 构建（未实测）
+  xcode_debug_sidecar.sh    Debug 构建自动注入 sidecar
+  generate_icons.py         生成 macOS/Windows 应用图标
   verify_bundle.dart        bundle 路径/哈希/版本验证
   vertical_slice.dart       终端版冒烟
 ```
@@ -161,7 +188,10 @@ tool/
 - Windows 构建与 GUI 子系统 stdio 未实测；Windows 控制锁仍需上游 `LockFileEx` 改造（见技术选型 P0）。
 - macOS release 仅 ad-hoc 签名；未公证，未做 Apple Silicon + Intel universal 单包。
 - 空闲自动锁定未实现（仅手动锁定/退出清除密码）；大快照的 `ls` 仍一次加载完整文件树。
+- 设置是主窗口内的功能页（通过应用菜单 ⌘, 或侧边栏更多菜单进入），不是独立的 macOS 设置窗口；侧边栏暂不支持手动隐藏。
+- 菜单中的“备份/校验/恢复”是导航命令，具体参数仍需在对应页面确认后执行。
 - 已做启动/备份后的 TargetDir 写锁检测与横幅提示，但尚未持久化“上次中断”的操作状态，也不会自动重试。
+- 未单独提供 Increase Contrast 色板变体；基线对比度已满足 WCAG AA，系统原生控件会跟随系统增强。
 
 ## 文档
 

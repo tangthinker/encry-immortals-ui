@@ -45,11 +45,13 @@ class _RestorePageState extends State<RestorePage> {
   List<PackRef> _packs = [];
   RestoreSummary? _summary;
   int _revision = -1;
+  int _refreshRevision = -1;
 
   @override
   void initState() {
     super.initState();
     _revision = widget.controller.dataRevision;
+    _refreshRevision = widget.controller.refreshRevision;
     widget.controller.addListener(_onControllerChanged);
     _loadHistory();
   }
@@ -63,8 +65,11 @@ class _RestorePageState extends State<RestorePage> {
   }
 
   void _onControllerChanged() {
-    if (widget.controller.dataRevision == _revision) return;
+    final dataChanged = widget.controller.dataRevision != _revision;
+    final refresh = widget.controller.refreshRevision != _refreshRevision;
+    if (!dataChanged && !refresh) return;
     _revision = widget.controller.dataRevision;
+    _refreshRevision = widget.controller.refreshRevision;
     if (mounted) _loadHistory(keepSelection: true);
   }
 
@@ -425,7 +430,7 @@ class _RestorePageState extends State<RestorePage> {
                       const SizedBox(height: 8),
                       Text(
                         '不要选择 TargetDir（${profile.targetDir}）或源目录本身。',
-                        style: const TextStyle(
+                        style:  TextStyle(
                           fontSize: 10.5,
                           color: AppColors.faint,
                         ),
@@ -531,19 +536,19 @@ class _RestorePageState extends State<RestorePage> {
                               ? null
                               : () => _execute(dryRun: false),
                           icon: busy
-                              ? const SizedBox(
+                              ?  SizedBox(
                                   width: 14,
                                   height: 14,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFF04140D),
+                                    color: AppColors.onAccent,
                                   ),
                                 )
                               : const Icon(Icons.restore_rounded, size: 17),
                           label: Text(busy ? '运行中…' : '开始恢复'),
                         ),
                         const Spacer(),
-                        const Text(
+                         Text(
                           'doctor --chain 是硬性前置',
                           style: TextStyle(fontSize: 10.5, color: AppColors.faint),
                         ),
@@ -575,7 +580,7 @@ class _RestorePageState extends State<RestorePage> {
                             ? '正在执行预检…'
                             : '${_progress!.doneFiles}/${_progress!.totalFiles} 文件 · '
                                   '${_progress!.percent}%',
-                        style: const TextStyle(
+                        style:  TextStyle(
                           fontSize: 11.5,
                           color: AppColors.muted,
                         ),
@@ -586,7 +591,7 @@ class _RestorePageState extends State<RestorePage> {
                           _progress!.current!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style:  TextStyle(
                             fontFamily: 'Menlo',
                             fontSize: 10.5,
                             color: AppColors.faint,
@@ -647,7 +652,7 @@ class _DoctorCard extends StatelessWidget {
       subtitle: '恢复前必须通过；FAIL 会阻止恢复',
       trailing: StatusPill(
         label: fail == 0 ? '通过' : '$fail FAIL',
-        color: fail == 0 ? AppColors.accent : AppColors.danger,
+        color: fail == 0 ? AppColors.success : AppColors.danger,
         dense: true,
       ),
       child: Column(
@@ -667,7 +672,7 @@ class _DoctorCard extends StatelessWidget {
                         : Icons.info_outline_rounded,
                     size: 14,
                     color: checks[index].status == DoctorStatus.pass
-                        ? AppColors.accent
+                        ? AppColors.success
                         : checks[index].status == DoctorStatus.fail
                         ? AppColors.danger
                         : AppColors.amber,
@@ -677,7 +682,7 @@ class _DoctorCard extends StatelessWidget {
                     width: 110,
                     child: Text(
                       checks[index].name,
-                      style: const TextStyle(
+                      style:  TextStyle(
                         fontSize: 11.5,
                         color: AppColors.text,
                       ),
@@ -686,7 +691,7 @@ class _DoctorCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       checks[index].detail,
-                      style: const TextStyle(
+                      style:  TextStyle(
                         fontSize: 11,
                         color: AppColors.faint,
                       ),
@@ -715,7 +720,7 @@ class _PacksCard extends StatelessWidget {
       subtitle: '来自 restore --list-packs；缺失项需要等待网盘同步',
       trailing: StatusPill(
         label: missing.isEmpty ? '齐全' : '缺失 ${missing.length}',
-        color: missing.isEmpty ? AppColors.accent : AppColors.danger,
+        color: missing.isEmpty ? AppColors.success : AppColors.danger,
         dense: true,
       ),
       child: Column(
@@ -724,14 +729,14 @@ class _PacksCard extends StatelessWidget {
           Text(
             '${packs.length} 个 pack · '
             '${formatBytes(packs.fold(0, (sum, pack) => sum + pack.size))}',
-            style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+            style:  TextStyle(fontSize: 11.5, color: AppColors.muted),
           ),
           if (missing.isNotEmpty) ...[
             const SizedBox(height: 10),
             for (final pack in missing)
               Text(
                 pack.path.isEmpty ? pack.name : pack.path,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontFamily: 'Menlo',
                   fontSize: 10.5,
                   color: AppColors.danger,
@@ -757,7 +762,7 @@ class _RestoreResultCard extends StatelessWidget {
       subtitle: summary.dryRun
           ? '未写入目标目录'
           : '目标目录写入完成；请自行检查缺失项',
-      accent: incomplete ? AppColors.amber : AppColors.accent,
+      accent: incomplete ? AppColors.amber : AppColors.success,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -799,7 +804,7 @@ class _RestoreResultCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               '缺失 pack：${(summary.missingPacks ?? []).join('、')}',
-              style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+              style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
             ),
           ],
         ],

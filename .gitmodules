@@ -1,0 +1,3 @@
+[submodule "third_party/encry-immortals"]
+	path = third_party/encry-immortals
+	url = https://github.com/tangthinker/encry-immortals.git

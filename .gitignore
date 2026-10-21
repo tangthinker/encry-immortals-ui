@@ -46,6 +46,3 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
-
-# Local core checkout used by packaging scripts (pin a tag/commit in third_party)
-/third_party/encry-immortals/

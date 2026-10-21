@@ -28,7 +28,7 @@ class PageHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontSize: 25,
                   height: 1.2,
                   fontWeight: FontWeight.w700,
@@ -39,7 +39,7 @@ class PageHeader extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 subtitle,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontSize: 12.5,
                   height: 1.5,
                   color: AppColors.faint,

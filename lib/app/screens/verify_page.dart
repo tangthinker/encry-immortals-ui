@@ -252,12 +252,12 @@ class _VerifyCard extends StatelessWidget {
           FilledButton.icon(
             onPressed: busy ? null : onRun,
             icon: running
-                ? const SizedBox(
+                ?  SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF04140D),
+                      color: AppColors.onAccent,
                     ),
                   )
                 : const Icon(Icons.play_arrow_rounded, size: 18),
@@ -295,13 +295,13 @@ class _DoctorCard extends StatelessWidget {
                   : '通过',
               color: checks.any((check) => check.status.isBlocking)
                   ? AppColors.danger
-                  : AppColors.accent,
+                  : AppColors.success,
               dense: true,
             ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+           Text(
             'doctor 会先校验哈希链与本地锚点，再检查 TargetDir 布局、暂存区与孤儿 pack。',
             style: TextStyle(fontSize: 12, height: 1.6, color: AppColors.muted),
           ),
@@ -335,7 +335,7 @@ class _VerifyResultCard extends StatelessWidget {
     return SectionCard(
       title: '校验结果',
       subtitle: clean ? '未发现缺失、大小不匹配或抽样失败' : '发现问题；请保留结果并排查',
-      accent: clean ? AppColors.accent : AppColors.danger,
+      accent: clean ? AppColors.success : AppColors.danger,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -397,7 +397,7 @@ class _VerifyResultCard extends StatelessWidget {
           ],
           if (clean) ...[
             const SizedBox(height: 10),
-            const Text(
+             Text(
               '注意：verify 通过代表本地文件完整，不代表云端没有回滚；需要同时看 doctor 的锚点检查。',
               style: TextStyle(
                 fontSize: 10.5,
@@ -446,7 +446,7 @@ class _DoctorResultCard extends StatelessWidget {
                     width: 128,
                     child: Text(
                       checks[index].name,
-                      style: const TextStyle(
+                      style:  TextStyle(
                         fontSize: 11.5,
                         color: AppColors.text,
                       ),
@@ -455,7 +455,7 @@ class _DoctorResultCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       checks[index].detail,
-                      style: const TextStyle(
+                      style:  TextStyle(
                         fontSize: 11,
                         height: 1.5,
                         color: AppColors.faint,
@@ -472,7 +472,7 @@ class _DoctorResultCard extends StatelessWidget {
   }
 
   Color _color(DoctorStatus status) => switch (status) {
-    DoctorStatus.pass => AppColors.accent,
+    DoctorStatus.pass => AppColors.success,
     DoctorStatus.warn => AppColors.amber,
     DoctorStatus.fail => AppColors.danger,
     _ => AppColors.faint,
@@ -507,7 +507,7 @@ class _IssueList extends StatelessWidget {
         for (final item in items.take(20))
           Text(
             item,
-            style: const TextStyle(
+            style:  TextStyle(
               fontFamily: 'Menlo',
               fontSize: 10.5,
               height: 1.5,
@@ -517,7 +517,7 @@ class _IssueList extends StatelessWidget {
         if (items.length > 20)
           Text(
             '… 还有 ${items.length - 20} 项',
-            style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+            style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
           ),
       ],
     );

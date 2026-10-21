@@ -73,6 +73,7 @@ class AppController extends ChangeNotifier {
   bool _unlocking = false;
   bool _disposed = false;
   int _dataRevision = 0;
+  int _refreshRevision = 0;
   InstanceLock? _instanceLock;
 
   AppPhase get phase => _phase;
@@ -86,6 +87,7 @@ class AppController extends ChangeNotifier {
   CoreExitCode? get unlockExit => _unlockExit;
   bool get unlocking => _unlocking;
   int get dataRevision => _dataRevision;
+  int get refreshRevision => _refreshRevision;
   bool get isBusy => queue.isBusy;
   bool get hasInstanceLock => _instanceLock != null;
 
@@ -306,6 +308,11 @@ class AppController extends ChangeNotifier {
 
   void markDataChanged() {
     _dataRevision++;
+    _notify();
+  }
+
+  void requestRefresh() {
+    _refreshRevision++;
     _notify();
   }
 

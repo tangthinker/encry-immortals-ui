@@ -19,7 +19,7 @@ class AppMark extends StatelessWidget {
       child: Icon(
         Icons.shield_moon_outlined,
         size: size * 0.55,
-        color: const Color(0xFF04140D),
+        color: AppColors.onAccent,
       ),
     );
   }

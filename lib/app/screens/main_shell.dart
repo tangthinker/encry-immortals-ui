@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 import '../app_controller.dart';
 import '../app_info.dart';
 import '../theme.dart';
+import '../window_title.dart';
 import 'backup_page.dart';
 import 'dashboard_page.dart';
 import 'history_page.dart';
@@ -23,12 +27,274 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
   final Set<int> _visited = {0};
+  static const _sectionTitles = ['概览', '备份', '历史', '恢复', '校验', '设置'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setAppWindowTitle(_sectionTitles[_index]);
+    });
+  }
 
   void _navigate(int index) {
     setState(() {
       _index = index;
       _visited.add(index);
     });
+    setAppWindowTitle(_sectionTitles[index]);
+  }
+
+  Future<void> _quitApp() async {
+    final busy = widget.controller.queue.isBusy;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(busy ? '命令仍在运行，退出？' : '退出 $appName？'),
+        content: Text(
+          busy
+              ? '退出会取消当前命令。写入被中断时可能留下 TargetDir 写锁。'
+              : '退出后主密码会从内存清除，下次需要重新输入。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(busy ? '取消命令并退出' : '退出'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (busy) await widget.controller.queue.cancelCurrent();
+    await widget.controller.quit(force: true);
+  }
+
+  void _invokeTextIntent(Intent intent) {
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    if (focusContext == null) return;
+    Actions.maybeInvoke(focusContext, intent);
+  }
+
+  List<PlatformMenuItem> _buildMenus(bool busy) {
+    final controller = widget.controller;
+    final nav = <PlatformMenuItem>[
+      for (var index = 0; index < 5; index++)
+        PlatformMenuItem(
+          label: _sectionTitles[index],
+          shortcut: SingleActivator(
+            LogicalKeyboardKey(0x00000000030 + index + 1),
+            meta: true,
+          ),
+          onSelected: () => _navigate(index),
+        ),
+    ];
+    return <PlatformMenuItem>[
+      PlatformMenu(
+        label: appName,
+        menus: <PlatformMenuItem>[
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.about,
+          ),
+          PlatformMenuItem(
+            label: '设置…',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.comma,
+              meta: true,
+            ),
+            onSelected: () => _navigate(5),
+          ),
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.servicesSubmenu,
+          ),
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.hide,
+          ),
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.hideOtherApplications,
+          ),
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.showAllApplications,
+          ),
+          PlatformMenuItem(
+            label: '退出 $appName',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyQ,
+              meta: true,
+            ),
+            onSelected: () => _quitApp(),
+          ),
+        ],
+      ),
+      PlatformMenu(
+        label: '文件',
+        menus: <PlatformMenuItem>[
+          PlatformMenuItem(
+            label: '备份…',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyB,
+              meta: true,
+              shift: true,
+            ),
+            onSelected: () => _navigate(1),
+          ),
+          PlatformMenuItem(
+            label: '恢复…',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyR,
+              meta: true,
+              shift: true,
+            ),
+            onSelected: () => _navigate(3),
+          ),
+          PlatformMenuItem(
+            label: '校验…',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyY,
+              meta: true,
+            ),
+            onSelected: () => _navigate(4),
+          ),
+          PlatformMenuItem(
+            label: '关闭窗口',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyW,
+              meta: true,
+            ),
+            onSelected: () => closeAppWindow(),
+          ),
+        ],
+      ),
+      PlatformMenu(
+        label: '编辑',
+        menus: <PlatformMenuItem>[
+          PlatformMenuItem(
+            label: '撤销',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyZ,
+              meta: true,
+            ),
+            onSelected: () => _invokeTextIntent(
+              const UndoTextIntent(SelectionChangedCause.keyboard),
+            ),
+          ),
+          PlatformMenuItem(
+            label: '重做',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyZ,
+              meta: true,
+              shift: true,
+            ),
+            onSelected: () => _invokeTextIntent(
+              const RedoTextIntent(SelectionChangedCause.keyboard),
+            ),
+          ),
+          PlatformMenuItem(
+            label: '剪切',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyX,
+              meta: true,
+            ),
+            onSelected: () => _invokeTextIntent(
+              CopySelectionTextIntent.cut(SelectionChangedCause.keyboard),
+            ),
+          ),
+          PlatformMenuItem(
+            label: '拷贝',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyC,
+              meta: true,
+            ),
+            onSelected: () =>
+                _invokeTextIntent(CopySelectionTextIntent.copy),
+          ),
+          PlatformMenuItem(
+            label: '粘贴',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyV,
+              meta: true,
+            ),
+            onSelected: () => _invokeTextIntent(
+              const PasteTextIntent(SelectionChangedCause.keyboard),
+            ),
+          ),
+          PlatformMenuItem(
+            label: '全选',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyA,
+              meta: true,
+            ),
+            onSelected: () => _invokeTextIntent(
+              const SelectAllTextIntent(SelectionChangedCause.keyboard),
+            ),
+          ),
+        ],
+      ),
+      PlatformMenu(
+        label: '显示',
+        menus: <PlatformMenuItem>[
+          ...nav,
+          PlatformMenuItem(
+            label: '刷新',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyR,
+              meta: true,
+            ),
+            onSelected: controller.requestRefresh,
+          ),
+          const PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.toggleFullScreen,
+          ),
+        ],
+      ),
+      PlatformMenu(
+        label: '操作',
+        menus: <PlatformMenuItem>[
+          PlatformMenuItem(
+            label: '锁定',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyL,
+              meta: true,
+            ),
+            onSelected: busy ? null : () => _lock(),
+          ),
+        ],
+      ),
+      PlatformMenu(
+        label: '窗口',
+        menus: const <PlatformMenuItem>[
+          PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.minimizeWindow,
+          ),
+          PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.zoomWindow,
+          ),
+          PlatformProvidedMenuItem(
+            type: PlatformProvidedMenuItemType.arrangeWindowsInFront,
+          ),
+        ],
+      ),
+      PlatformMenu(
+        label: '帮助',
+        menus: <PlatformMenuItem>[
+          PlatformMenuItem(
+            label: '打开项目文档',
+            onSelected: () => controller.platform.openUrl(
+              'https://github.com/tangthinker/encry-immortals',
+            ),
+          ),
+          PlatformMenuItem(
+            label: '报告问题',
+            onSelected: () => controller.platform.openUrl(
+              'https://github.com/tangthinker/encry-immortals/issues',
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 
   Widget _pageAt(int index) {
@@ -39,7 +305,10 @@ class _MainShellState extends State<MainShell> {
       2 => HistoryPage(controller: widget.controller),
       3 => RestorePage(controller: widget.controller),
       4 => VerifyPage(controller: widget.controller),
-      _ => SettingsPage(controller: widget.controller),
+      _ => SettingsPage(
+        controller: widget.controller,
+        onDone: () => _navigate(0),
+      ),
     };
   }
 
@@ -85,7 +354,7 @@ class _MainShellState extends State<MainShell> {
       listenable: controller.queue,
       builder: (context, _) {
         final busy = controller.queue.isBusy;
-        return Scaffold(
+        final scaffold = Scaffold(
           body: SafeArea(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,6 +365,7 @@ class _MainShellState extends State<MainShell> {
                   busy: busy,
                   onSelect: _navigate,
                   onLock: _lock,
+                  onSettings: () => _navigate(5),
                 ),
                 Expanded(
                   child: Column(
@@ -122,6 +392,53 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
         );
+        Widget content = scaffold;
+        if (Platform.isMacOS) {
+          content = PlatformMenuBar(
+            menus: _buildMenus(busy),
+            child: content,
+          );
+        } else {
+          content = CallbackShortcuts(
+            bindings: {
+              for (var index = 0; index < 5; index++)
+                SingleActivator(
+                  LogicalKeyboardKey(0x00000000030 + index + 1),
+                  control: true,
+                ): () => _navigate(index),
+              const SingleActivator(
+                LogicalKeyboardKey.keyB,
+                control: true,
+                shift: true,
+              ): () => _navigate(1),
+              const SingleActivator(
+                LogicalKeyboardKey.keyR,
+                control: true,
+                shift: true,
+              ): () => _navigate(3),
+              const SingleActivator(
+                LogicalKeyboardKey.keyY,
+                control: true,
+              ): () => _navigate(4),
+              const SingleActivator(
+                LogicalKeyboardKey.keyR,
+                control: true,
+              ): controller.requestRefresh,
+              const SingleActivator(
+                LogicalKeyboardKey.keyL,
+                control: true,
+              ): () {
+                if (!busy) _lock();
+              },
+              const SingleActivator(
+                LogicalKeyboardKey.comma,
+                control: true,
+              ): () => _navigate(5),
+            },
+            child: content,
+          );
+        }
+        return content;
       },
     );
   }
@@ -134,6 +451,7 @@ class _Sidebar extends StatelessWidget {
     required this.busy,
     required this.onSelect,
     required this.onLock,
+    required this.onSettings,
   });
 
   final AppController controller;
@@ -141,14 +459,15 @@ class _Sidebar extends StatelessWidget {
   final bool busy;
   final ValueChanged<int> onSelect;
   final VoidCallback onLock;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
     final profile = controller.profile;
     final targetName = profile == null ? '未配置' : p.basename(profile.targetDir);
     return Container(
-      width: 228,
-      decoration: const BoxDecoration(
+      width: 240,
+      decoration:  BoxDecoration(
         color: AppColors.surface,
         border: Border(right: BorderSide(color: AppColors.borderSoft)),
       ),
@@ -166,10 +485,10 @@ class _Sidebar extends StatelessWidget {
                     color: AppColors.accent,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: const Icon(
+                  child:  Icon(
                     Icons.shield_moon_outlined,
                     size: 19,
-                    color: Color(0xFF04140D),
+                    color: AppColors.onAccent,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -177,7 +496,7 @@ class _Sidebar extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         appName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -192,13 +511,38 @@ class _Sidebar extends StatelessWidget {
                         targetName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           color: AppColors.faint,
                         ),
                       ),
                     ],
                   ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: '更多',
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
+                    Icons.more_horiz_rounded,
+                    size: 18,
+                    color: AppColors.muted,
+                  ),
+                  color: AppColors.surfaceRaised,
+                  onSelected: (value) {
+                    if (value == 'lock' && !busy) onLock();
+                    if (value == 'settings') onSettings();
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'lock',
+                      enabled: !busy,
+                      child: const Text('锁定'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'settings',
+                      child: Text('设置…'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -240,13 +584,6 @@ class _Sidebar extends StatelessWidget {
             label: '校验',
             onTap: () => onSelect(4),
           ),
-          _NavItem(
-            selected: index == 5,
-            icon: Icons.settings_outlined,
-            selectedIcon: Icons.settings_rounded,
-            label: '设置',
-            onTap: () => onSelect(5),
-          ),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(14),
@@ -265,8 +602,8 @@ class _Sidebar extends StatelessWidget {
                       Container(
                         width: 7,
                         height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
+                        decoration:  BoxDecoration(
+                          color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -276,7 +613,7 @@ class _Sidebar extends StatelessWidget {
                           'core ${controller.coreVersion ?? '—'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style:  TextStyle(
                             fontFamily: 'Menlo',
                             fontSize: 10,
                             color: AppColors.muted,
@@ -286,20 +623,11 @@ class _Sidebar extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: busy ? null : onLock,
-                  icon: const Icon(Icons.lock_outline_rounded, size: 15),
-                  label: const Text('锁定'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
                 const SizedBox(height: 6),
-                const Center(
+                 Center(
                   child: Text(
                     'v$appVersion',
-                    style: TextStyle(fontSize: 9.5, color: AppColors.faint),
+                    style: TextStyle(fontSize: 10, color: AppColors.faint),
                   ),
                 ),
               ],
@@ -379,15 +707,15 @@ class _TargetLockBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF2A2314),
-        border: Border(bottom: BorderSide(color: Color(0xFF4A3A18))),
+      decoration:  BoxDecoration(
+        color: AppColors.warningSurface,
+        border: Border(bottom: BorderSide(color: AppColors.warningBorder)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, size: 15, color: AppColors.amber),
+           Icon(Icons.warning_amber_rounded, size: 15, color: AppColors.amber),
           const SizedBox(width: 8),
-          const Expanded(
+           Expanded(
             child: Text(
               '检测到 TargetDir 写锁：上次写入可能被中断。确认没有其他进程后，在设置中诊断。',
               style: TextStyle(fontSize: 11.5, color: AppColors.amber),
@@ -411,7 +739,7 @@ class _BusyBar extends StatelessWidget {
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
+      decoration:  BoxDecoration(
         color: AppColors.surfaceRaised,
         border: Border(bottom: BorderSide(color: AppColors.borderSoft)),
       ),
@@ -426,7 +754,7 @@ class _BusyBar extends StatelessWidget {
           Expanded(
             child: Text(
               '$label · 所有命令严格串行',
-              style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+              style:  TextStyle(fontSize: 11.5, color: AppColors.muted),
             ),
           ),
           TextButton(

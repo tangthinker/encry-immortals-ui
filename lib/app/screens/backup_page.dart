@@ -255,7 +255,7 @@ class _BackupPageState extends State<BackupPage> {
                     ),
                     if (sourceMissing) ...[
                       const SizedBox(height: 12),
-                      const NoticeBanner(
+                       NoticeBanner(
                         message: '源目录不可访问。请确认磁盘/网络位置已挂载，或重新创建 profile。',
                         color: AppColors.danger,
                         icon: Icons.folder_off_outlined,
@@ -277,12 +277,12 @@ class _BackupPageState extends State<BackupPage> {
                               ? null
                               : () => _start(dryRun: false),
                           icon: busy
-                              ? const SizedBox(
+                              ?  SizedBox(
                                   width: 14,
                                   height: 14,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFF04140D),
+                                    color: AppColors.onAccent,
                                   ),
                                 )
                               : const Icon(
@@ -294,7 +294,7 @@ class _BackupPageState extends State<BackupPage> {
                         const Spacer(),
                         Text(
                           'session_max_mib = ${profile?.sessionMaxMib ?? '—'}',
-                          style: const TextStyle(
+                          style:  TextStyle(
                             fontFamily: 'Menlo',
                             fontSize: 10.5,
                             color: AppColors.faint,
@@ -360,7 +360,7 @@ class _BackupPageState extends State<BackupPage> {
                         const SizedBox(height: 12),
                         Text(
                           _lockDetail!,
-                          style: const TextStyle(
+                          style:  TextStyle(
                             fontSize: 11.5,
                             height: 1.55,
                             color: AppColors.faint,
@@ -410,7 +410,7 @@ class _ProgressCard extends StatelessWidget {
       subtitle: '进度只用于展示；结果以最终 JSON 为准',
       trailing: Text(
         percent == null ? '准备中' : '$percent%',
-        style: const TextStyle(
+        style:  TextStyle(
           fontFamily: 'Menlo',
           fontSize: 12,
           color: AppColors.accent,
@@ -432,7 +432,7 @@ class _ProgressCard extends StatelessWidget {
               '${progress!.doneFiles}/${progress!.totalFiles} 文件 · '
               '${progress!.doneText}/${progress!.totalText}'
               '${progress!.speedMibPerSecond == null ? '' : ' · ${progress!.speedMibPerSecond!.toStringAsFixed(1)} MiB/s'}',
-              style: const TextStyle(
+              style:  TextStyle(
                 fontSize: 11.5,
                 color: AppColors.muted,
               ),
@@ -443,7 +443,7 @@ class _ProgressCard extends StatelessWidget {
               progress!.current!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style:  TextStyle(
                 fontFamily: 'Menlo',
                 fontSize: 10.5,
                 color: AppColors.faint,
@@ -485,7 +485,7 @@ class _ResultCard extends StatelessWidget {
           : noChanges
           ? '源目录自上次提交以来没有变化'
           : '本地提交已写入；等待网盘客户端同步到云端',
-      accent: summary.changed && !dryRun ? AppColors.accent : null,
+      accent: summary.changed && !dryRun ? AppColors.success : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -494,14 +494,14 @@ class _ResultCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 14),
               child: Row(
                 children: [
-                  const StatusPill(
+                   StatusPill(
                     label: '已提交',
-                    color: AppColors.accent,
+                    color: AppColors.success,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     'seq ${summary.seq}',
-                    style: const TextStyle(
+                    style:  TextStyle(
                       fontFamily: 'Menlo',
                       fontSize: 12,
                       color: AppColors.muted,
@@ -551,7 +551,7 @@ class _ResultCard extends StatelessWidget {
           ],
           if (!dryRun) ...[
             const SizedBox(height: 12),
-            const Text(
+             Text(
               '“提交完成”只代表本地 TargetDir 写入成功；云端副本取决于网盘客户端的同步进度。',
               style: TextStyle(
                 fontSize: 11,
@@ -585,7 +585,7 @@ class _LockCard extends StatelessWidget {
         children: [
           Text(
             info.path,
-            style: const TextStyle(
+            style:  TextStyle(
               fontFamily: 'Menlo',
               fontSize: 10.5,
               color: AppColors.faint,
@@ -595,15 +595,15 @@ class _LockCard extends StatelessWidget {
           Text(
             'host ${info.hostId ?? '?'} · pid ${info.pid ?? '?'} · '
             'started ${info.startedAt == null ? '?' : formatDateTime(info.startedAt!)}',
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+            style:  TextStyle(fontSize: 11, color: AppColors.muted),
           ),
           if (info.toolVersion != null)
             Text(
               'tool ${info.toolVersion}',
-              style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+              style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
             ),
           if (info.legacyExists)
-            const Text(
+             Text(
               '检测到旧版 .apex.lock，也视为写入中。',
               style: TextStyle(fontSize: 10.5, color: AppColors.amber),
             ),

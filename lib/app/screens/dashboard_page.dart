@@ -6,6 +6,7 @@ import '../../core/core_models.dart';
 import '../../core/profile.dart';
 import '../format.dart';
 import '../theme.dart';
+import '../widgets/chain_seal.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
 
@@ -29,11 +30,13 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _loading = true;
   String? _error;
   int _revision = -1;
+  int _refreshRevision = -1;
 
   @override
   void initState() {
     super.initState();
     _revision = widget.controller.dataRevision;
+    _refreshRevision = widget.controller.refreshRevision;
     widget.controller.addListener(_onControllerChanged);
     _load();
   }
@@ -45,8 +48,11 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _onControllerChanged() {
-    if (widget.controller.dataRevision == _revision) return;
+    final dataChanged = widget.controller.dataRevision != _revision;
+    final refresh = widget.controller.refreshRevision != _refreshRevision;
+    if (!dataChanged && !refresh) return;
     _revision = widget.controller.dataRevision;
+    _refreshRevision = widget.controller.refreshRevision;
     if (mounted) _load(quiet: true);
   }
 
@@ -116,7 +122,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 title: '概览',
                 subtitle: profile == null
                     ? '未配置'
-                    : '${profile.name} · ${p.basename(profile.targetDir)}',
+                    : '${profile.mode.label} · ${p.basename(profile.targetDir)}',
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -137,7 +143,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       color: _loading
                           ? AppColors.blue
                           : status?.isHealthy == true
-                          ? AppColors.accent
+                          ? AppColors.success
                           : AppColors.amber,
                       dense: true,
                     ),
@@ -228,7 +234,7 @@ class _LoadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SectionCard(
+    return  SectionCard(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(
@@ -308,7 +314,7 @@ class _MetricsGrid extends StatelessWidget {
         status.verified ? '已验证' : '未验证',
         '锚点 ${status.anchorShort.isEmpty ? '—' : status.anchorShort}',
         status.verified ? Icons.verified_rounded : Icons.gpp_bad_outlined,
-        status.verified ? AppColors.accent : AppColors.amber,
+        status.verified ? AppColors.success : AppColors.amber,
       ),
     ];
     return LayoutBuilder(
@@ -372,7 +378,7 @@ class _MetricCard extends StatelessWidget {
               const SizedBox(width: 7),
               Text(
                 label,
-                style: const TextStyle(fontSize: 11, color: AppColors.faint),
+                style:  TextStyle(fontSize: 11, color: AppColors.faint),
               ),
             ],
           ),
@@ -381,7 +387,7 @@ class _MetricCard extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style:  TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.4,
@@ -393,7 +399,7 @@ class _MetricCard extends StatelessWidget {
             detail,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+            style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
           ),
         ],
       ),
@@ -413,11 +419,13 @@ class _HealthCard extends StatelessWidget {
     final healthy = status.isHealthy && !status.hasUnlockWarning;
     return SectionCard(
       title: '健康度',
-      subtitle: '以 CLI 的 status --chain 为准',
-      trailing: StatusPill(
-        label: healthy ? '正常' : '需注意',
-        color: healthy ? AppColors.accent : AppColors.amber,
-        dense: true,
+      subtitle: healthy
+          ? '以 CLI 的 status --chain 为准 · 正常'
+          : '以 CLI 的 status --chain 为准 · 需注意',
+      trailing: ChainSeal(
+        anchor: status.anchorShort,
+        verified: healthy,
+        size: 78,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -425,12 +433,6 @@ class _HealthCard extends StatelessWidget {
           InfoRow(
             label: 'vault_id',
             value: status.vaultId.isEmpty ? '—' : status.vaultId,
-            mono: true,
-          ),
-          const Divider(),
-          InfoRow(
-            label: '锚点',
-            value: status.anchorShort.isEmpty ? '—' : status.anchorShort,
             mono: true,
           ),
           const Divider(),
@@ -483,7 +485,7 @@ class _LatestCommitCard extends StatelessWidget {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                 Text(
                   '创建库后还没有提交。先做一次备份，历史记录会出现在这里。',
                   style: TextStyle(
                     fontSize: 12,
@@ -506,7 +508,7 @@ class _LatestCommitCard extends StatelessWidget {
                   commit!.message.isEmpty ? '（无提交信息）' : commit!.message,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 1.5,

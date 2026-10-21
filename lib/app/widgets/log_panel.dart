@@ -63,7 +63,7 @@ class _LogPanelState extends State<LogPanel> {
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
-        color: const Color(0xFF070C16),
+        color: AppColors.logBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.borderSoft),
       ),
@@ -71,7 +71,7 @@ class _LogPanelState extends State<LogPanel> {
           ? Center(
               child: Text(
                 widget.emptyText,
-                style: const TextStyle(fontSize: 12, color: AppColors.faint),
+                style:  TextStyle(fontSize: 12, color: AppColors.faint),
               ),
             )
           : Scrollbar(
@@ -88,7 +88,7 @@ class _LogPanelState extends State<LogPanel> {
                   final color = line.contains('✗')
                       ? AppColors.danger
                       : line.contains('✓')
-                      ? AppColors.accent
+                      ? AppColors.success
                       : line.contains('▶')
                       ? AppColors.blue
                       : AppColors.muted;

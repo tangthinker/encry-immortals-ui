@@ -30,11 +30,13 @@ class _HistoryPageState extends State<HistoryPage> {
   bool _treeLoading = false;
   String? _treeError;
   int _revision = -1;
+  int _refreshRevision = -1;
 
   @override
   void initState() {
     super.initState();
     _revision = widget.controller.dataRevision;
+    _refreshRevision = widget.controller.refreshRevision;
     widget.controller.addListener(_onControllerChanged);
     _loadHistory();
   }
@@ -46,8 +48,11 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   void _onControllerChanged() {
-    if (widget.controller.dataRevision == _revision) return;
+    final dataChanged = widget.controller.dataRevision != _revision;
+    final refresh = widget.controller.refreshRevision != _refreshRevision;
+    if (!dataChanged && !refresh) return;
     _revision = widget.controller.dataRevision;
+    _refreshRevision = widget.controller.refreshRevision;
     if (mounted) _loadHistory(keepSelection: true);
   }
 
@@ -273,7 +278,7 @@ class _CommitList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
               children: [
-                const Text(
+                 Text(
                   '提交',
                   style: TextStyle(
                     fontSize: 12.5,
@@ -284,7 +289,7 @@ class _CommitList extends StatelessWidget {
                 const Spacer(),
                 Text(
                   '${commits.length}',
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontSize: 11,
                     color: AppColors.faint,
                   ),
@@ -340,8 +345,8 @@ class _CommitList extends StatelessWidget {
                               const Spacer(),
                               Text(
                                 formatDateTime(commit.timestamp),
-                                style: const TextStyle(
-                                  fontSize: 9.5,
+                                style:  TextStyle(
+                                  fontSize: 10,
                                   color: AppColors.faint,
                                 ),
                               ),
@@ -352,7 +357,7 @@ class _CommitList extends StatelessWidget {
                             commit.message.isEmpty ? '（无提交信息）' : commit.message,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style:  TextStyle(
                               fontSize: 11.5,
                               height: 1.4,
                               color: AppColors.muted,
@@ -361,7 +366,7 @@ class _CommitList extends StatelessWidget {
                           const SizedBox(height: 5),
                           Text(
                             '${commit.ops} ops · ${commit.packs} packs',
-                            style: const TextStyle(
+                            style:  TextStyle(
                               fontSize: 10,
                               color: AppColors.faint,
                             ),
@@ -448,7 +453,7 @@ class _DetailPanel extends StatelessWidget {
                     children: [
                       Text(
                         'seq ${detail!.seq}',
-                        style: const TextStyle(
+                        style:  TextStyle(
                           fontFamily: 'Menlo',
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -464,7 +469,7 @@ class _DetailPanel extends StatelessWidget {
                       const Spacer(),
                       Text(
                         formatDateTime(detail!.timestamp),
-                        style: const TextStyle(
+                        style:  TextStyle(
                           fontSize: 11,
                           color: AppColors.faint,
                         ),
@@ -475,7 +480,7 @@ class _DetailPanel extends StatelessWidget {
                     const SizedBox(height: 8),
                     SelectableText(
                       detail!.message,
-                      style: const TextStyle(
+                      style:  TextStyle(
                         fontSize: 12.5,
                         height: 1.55,
                         color: AppColors.muted,
@@ -578,7 +583,7 @@ class _OpsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (ops.isEmpty) {
-      return const Center(
+      return  Center(
         child: Text(
           '这次提交没有文件变更（可能是 note）',
           style: TextStyle(fontSize: 12, color: AppColors.faint),
@@ -601,7 +606,7 @@ class _OpsList extends StatelessWidget {
               Expanded(
                 child: Text(
                   op.path,
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontFamily: 'Menlo',
                     fontSize: 11.5,
                     height: 1.5,
@@ -612,13 +617,13 @@ class _OpsList extends StatelessWidget {
               if (op.extra != null)
                 Text(
                   '→ ${op.extra}',
-                  style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+                  style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
                 ),
               if (!op.isDir) ...[
                 const SizedBox(width: 10),
                 Text(
                   formatBytes(op.size),
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontFamily: 'Menlo',
                     fontSize: 10.5,
                     color: AppColors.faint,
@@ -647,7 +652,7 @@ class _OpsList extends StatelessWidget {
   };
 
   Color _color(CommitOp op) => switch (op.type) {
-    'add' => AppColors.accent,
+    'add' => AppColors.success,
     'delete' => AppColors.danger,
     'rmdir' => AppColors.danger,
     'mkdir' => AppColors.amber,
@@ -697,12 +702,12 @@ class _TreeContent extends StatelessWidget {
       );
     }
     if (entries == null) {
-      return const Center(
+      return  Center(
         child: Text('文件树未加载', style: TextStyle(fontSize: 12, color: AppColors.faint)),
       );
     }
     if (entries!.isEmpty) {
-      return const Center(
+      return  Center(
         child: Text('快照为空', style: TextStyle(fontSize: 12, color: AppColors.faint)),
       );
     }

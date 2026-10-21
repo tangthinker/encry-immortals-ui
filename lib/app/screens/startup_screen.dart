@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
+import '../window_title.dart';
 import '../theme.dart';
 import '../widgets/app_mark.dart';
 
@@ -12,7 +13,7 @@ class StartupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return  Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -48,6 +49,14 @@ class StartupFailureScreen extends StatefulWidget {
 class _StartupFailureScreenState extends State<StartupFailureScreen> {
   bool _busy = false;
   String? _actionError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setAppWindowTitle('无法启动');
+    });
+  }
 
   Future<void> _retry() async {
     setState(() {
@@ -121,7 +130,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                     children: [
                       const AppMark(size: 44),
                       const SizedBox(width: 14),
-                      const Expanded(
+                       Expanded(
                         child: Text(
                           '无法启动',
                           style: TextStyle(
@@ -140,7 +149,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                   const SizedBox(height: 20),
                   Text(
                     error,
-                    style: const TextStyle(
+                    style:  TextStyle(
                       fontSize: 13,
                       height: 1.6,
                       color: AppColors.muted,
@@ -157,7 +166,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.borderSoft),
                       ),
-                      child: const SelectableText(
+                      child:  SelectableText(
                         '开发模式可用 EIMMORTAL_CORE_PATH 指向本地 sidecar：\n'
                         'EIMMORTAL_CORE_PATH=/path/to/eimmortal flutter run -d macos',
                         style: TextStyle(
@@ -173,7 +182,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                     const SizedBox(height: 14),
                     Text(
                       _actionError!,
-                      style: const TextStyle(
+                      style:  TextStyle(
                         fontSize: 12,
                         color: AppColors.danger,
                       ),
@@ -187,12 +196,12 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                       FilledButton.icon(
                         onPressed: _busy ? null : _retry,
                         icon: _busy
-                            ? const SizedBox(
+                            ?  SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Color(0xFF04140D),
+                                  color: AppColors.onAccent,
                                 ),
                               )
                             : const Icon(Icons.refresh_rounded, size: 18),
@@ -206,7 +215,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                       ),
                       TextButton(
                         onPressed: _busy ? null : _reset,
-                        child: const Text(
+                        child:  Text(
                           '重置本地配置',
                           style: TextStyle(color: AppColors.danger),
                         ),
@@ -216,7 +225,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                   const SizedBox(height: 18),
                   SelectableText(
                     'host: ${Platform.operatingSystem} · app data: ${controller.paths.root}',
-                    style: const TextStyle(
+                    style:  TextStyle(
                       fontFamily: 'Menlo',
                       fontSize: 10.5,
                       color: AppColors.faint,

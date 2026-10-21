@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 import '../../app_controller.dart';
+import '../../window_title.dart';
 import '../../../core/core_models.dart';
 import '../../../core/onboarding_service.dart';
 import '../../../core/profile.dart';
@@ -50,6 +51,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.initState();
     _password.addListener(_onCredentialChanged);
     _confirm.addListener(_onCredentialChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setAppWindowTitle('欢迎');
+    });
   }
 
   void _onCredentialChanged() {
@@ -360,7 +364,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const AppMark(size: 48),
             const SizedBox(width: 14),
-            const Expanded(
+             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -387,7 +391,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ],
         ),
         const SizedBox(height: 36),
-        const Text(
+         Text(
           '选择如何开始',
           style: TextStyle(
             fontSize: 30,
@@ -397,7 +401,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+         Text(
           '新建一个库，或从另一台机器带来的 Armor Key 加入已有备份。'
           '同一个 TargetDir 只对应一个源根目录。',
           style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.muted),
@@ -446,7 +450,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           },
         ),
         const SizedBox(height: 26),
-        const NoticeBanner(
+         NoticeBanner(
           title: '安全提示',
           message: '主密码不可更改；忘记密码将无法恢复。Armor Key 只包含盐与 KDF 参数，'
               '但仍应与主密码分开保存。应用不会把你的密码写入磁盘或日志。'
@@ -458,7 +462,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SelectableText(
           'sidecar: ${widget.controller.runtime?.version ?? '不可用'} · '
           'app data: ${widget.controller.paths.root}',
-          style: const TextStyle(
+          style:  TextStyle(
             fontFamily: 'Menlo',
             fontSize: 10.5,
             color: AppColors.faint,
@@ -482,7 +486,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: Text(
                 isJoin ? '加入已有库' : '创建新库',
-                style: const TextStyle(
+                style:  TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -537,7 +541,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   alignment: Alignment.centerLeft,
                   child: TextButton(
                     onPressed: _resetLocal,
-                    child: const Text(
+                    child:  Text(
                       '重置本地配置后重试',
                       style: TextStyle(color: AppColors.danger, fontSize: 12),
                     ),
@@ -577,7 +581,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         if (isJoin) ...[
           const SizedBox(height: 16),
-          const NoticeBanner(
+           NoticeBanner(
             message: '加入前请确认 TargetDir 来自可信来源。应用不会在这里重新生成密钥。',
             color: AppColors.blue,
             icon: Icons.info_outline_rounded,
@@ -654,7 +658,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+         Text(
           '确认信息',
           style: TextStyle(
             fontSize: 16,
@@ -680,7 +684,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ],
         const SizedBox(height: 16),
-        const NoticeBanner(
+         NoticeBanner(
           message: '开始后会在本地应用数据目录创建控制平面。失败会自动清理本地控制平面，'
               '不会删除 TargetDir 中的备份。',
           color: AppColors.amber,
@@ -713,12 +717,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ? _join
                 : _create,
             icon: _busy
-                ? const SizedBox(
+                ?  SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF04140D),
+                      color: AppColors.onAccent,
                     ),
                   )
                 : Icon(
@@ -747,7 +751,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const AppMark(size: 44),
             const SizedBox(width: 13),
-            const Expanded(
+             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -767,7 +771,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ],
               ),
             ),
-            StatusPill(label: 'vault.meta 已生成', color: AppColors.accent, dense: true),
+            StatusPill(label: 'vault.meta 已生成', color: AppColors.success, dense: true),
           ],
         ),
         const SizedBox(height: 22),
@@ -789,7 +793,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+               Text(
                 '单行版',
                 style: TextStyle(
                   fontSize: 11,
@@ -800,7 +804,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 8),
               SelectableText(
                 key.armor,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontFamily: 'Menlo',
                   fontSize: 11.5,
                   height: 1.6,
@@ -832,11 +836,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           onChanged: (value) => setState(() => _keyConfirmed = value ?? false),
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
-          title: const Text(
+          title:  Text(
             '我已把 Armor Key 保存到密码管理器或离线位置',
             style: TextStyle(fontSize: 12.5, color: AppColors.text),
           ),
-          subtitle: const Text(
+          subtitle:  Text(
             '没有 Armor Key，重装或换机后无法恢复数据。',
             style: TextStyle(fontSize: 11, color: AppColors.faint),
           ),
@@ -854,18 +858,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             Text(
               '${profile.sourceRoot} → ${profile.targetDir}',
-              style: const TextStyle(fontSize: 10.5, color: AppColors.faint),
+              style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
             ),
             const Spacer(),
             FilledButton.icon(
               onPressed: _busy || !_keyConfirmed ? null : _activate,
               icon: _busy
-                  ? const SizedBox(
+                  ?  SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0xFF04140D),
+                        color: AppColors.onAccent,
                       ),
                     )
                   : const Icon(Icons.arrow_forward_rounded, size: 17),
@@ -886,7 +890,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const AppMark(size: 44),
             const SizedBox(width: 13),
-            const Expanded(
+             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -906,7 +910,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ],
               ),
             ),
-            const StatusPill(label: '链校验通过', color: AppColors.accent, dense: true),
+             StatusPill(label: '链校验通过', color: AppColors.success, dense: true),
           ],
         ),
         const SizedBox(height: 22),
@@ -937,12 +941,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: FilledButton.icon(
             onPressed: _busy ? null : _activate,
             icon: _busy
-                ? const SizedBox(
+                ?  SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF04140D),
+                      color: AppColors.onAccent,
                     ),
                   )
                 : const Icon(Icons.arrow_forward_rounded, size: 17),
@@ -1010,7 +1014,7 @@ class _ChoiceCard extends StatelessWidget {
               const SizedBox(height: 18),
               Text(
                 title,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -1019,7 +1023,7 @@ class _ChoiceCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 description,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontSize: 12.5,
                   height: 1.6,
                   color: AppColors.muted,
@@ -1037,7 +1041,7 @@ class _ChoiceCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           bullet,
-                          style: const TextStyle(
+                          style:  TextStyle(
                             fontSize: 11.5,
                             height: 1.5,
                             color: AppColors.faint,
@@ -1110,7 +1114,7 @@ class _StepHeader extends StatelessWidget {
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: index <= current
-                          ? const Color(0xFF04140D)
+                          ? AppColors.onAccent
                           : AppColors.faint,
                     ),
                   ),
@@ -1148,7 +1152,7 @@ class _FieldLabel extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style:  TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
@@ -1157,7 +1161,7 @@ class _FieldLabel extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             help,
-            style: const TextStyle(fontSize: 11, color: AppColors.faint),
+            style:  TextStyle(fontSize: 11, color: AppColors.faint),
           ),
         ],
       ),
@@ -1244,7 +1248,7 @@ class _PasswordChecklist extends StatelessWidget {
               Icon(
                 rule.$2 ? Icons.check_circle_rounded : Icons.circle_outlined,
                 size: 13,
-                color: rule.$2 ? AppColors.accent : AppColors.faint,
+                color: rule.$2 ? AppColors.success : AppColors.faint,
               ),
               const SizedBox(width: 5),
               Text(
@@ -1300,7 +1304,7 @@ class _ProgressPanel extends StatelessWidget {
                 Icon(
                   error == null ? Icons.check_circle_rounded : Icons.error_outline,
                   size: 15,
-                  color: error == null ? AppColors.accent : AppColors.danger,
+                  color: error == null ? AppColors.success : AppColors.danger,
                 ),
               const SizedBox(width: 8),
               Expanded(
@@ -1310,7 +1314,7 @@ class _ProgressPanel extends StatelessWidget {
                       : error == null
                       ? '完成'
                       : '已停止',
-                  style: const TextStyle(
+                  style:  TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.text,
@@ -1334,7 +1338,7 @@ class _ProgressPanel extends StatelessWidget {
                     Icon(
                       step.ok ? Icons.check_rounded : Icons.close_rounded,
                       size: 13,
-                      color: step.ok ? AppColors.accent : AppColors.danger,
+                      color: step.ok ? AppColors.success : AppColors.danger,
                     ),
                     const SizedBox(width: 7),
                     Expanded(
