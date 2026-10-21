@@ -54,16 +54,21 @@ class VaultConfig {
   Future<File> writeTo(String configPath) async {
     final file = File(configPath);
     await file.parent.create(recursive: true);
-    await file.writeAsString(toToml(), flush: true);
+    final tmp = File('$configPath.tmp');
+    await tmp.writeAsString(toToml(), flush: true);
     if (!Platform.isWindows) {
-      final chmod = await Process.run('chmod', ['600', file.path]);
+      final chmod = await Process.run('chmod', ['600', tmp.path]);
       if (chmod.exitCode != 0) {
         throw FileSystemException(
           '无法把配置文件权限设为 0600：${chmod.stderr}',
-          file.path,
+          tmp.path,
         );
       }
     }
+    if (Platform.isWindows && await file.exists()) {
+      await file.delete();
+    }
+    await tmp.rename(file.path);
     return file;
   }
 

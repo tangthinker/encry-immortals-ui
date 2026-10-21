@@ -1,7 +1,7 @@
 name: encry_immortals_ui
 description: "encry-immortals (eimmortal) 的 macOS / Windows 桌面客户端。"
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: ^3.13.4
@@ -10,9 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  flutter_riverpod: ^3.4.3
   crypto: ^3.0.7
   path: ^1.9.1
+  file_selector: ^1.1.0
+  window_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

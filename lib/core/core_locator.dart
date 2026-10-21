@@ -170,7 +170,7 @@ class CoreLocator {
     for (final candidate in candidates) {
       if (File(candidate).existsSync()) {
         return CoreBinary(
-          path: candidate,
+          path: p.absolute(candidate),
           source: source,
           expectedSha256: expectedSha256,
         );

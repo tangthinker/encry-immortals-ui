@@ -83,13 +83,6 @@ class SectionCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,6 +155,7 @@ class InfoRow extends StatelessWidget {
     this.valueColor,
     this.selectable = false,
     this.copiedHint,
+    this.trailing,
     super.key,
   });
 
@@ -171,6 +165,7 @@ class InfoRow extends StatelessWidget {
   final Color? valueColor;
   final bool selectable;
   final String? copiedHint;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -208,6 +203,7 @@ class InfoRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(child: valueWidget),
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
           if (copiedHint != null) ...[
             const SizedBox(width: 8),
             Text(
@@ -262,6 +258,118 @@ class KeyValueChip extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class NoticeBanner extends StatelessWidget {
+  const NoticeBanner({
+    required this.message,
+    this.title,
+    this.color = AppColors.amber,
+    this.icon = Icons.info_outline_rounded,
+    this.action,
+    super.key,
+  });
+
+  final String message;
+  final String? title;
+  final Color color;
+  final IconData icon;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) ...[
+                  Text(
+                    title!,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                ],
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.55,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (action != null) ...[const SizedBox(width: 12), action!],
+        ],
+      ),
+    );
+  }
+}
+
+class EmptyState extends StatelessWidget {
+  const EmptyState({
+    required this.title,
+    required this.message,
+    this.icon = Icons.inbox_outlined,
+    this.action,
+    super.key,
+  });
+
+  final String title;
+  final String message;
+  final IconData icon;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 28, color: AppColors.faint),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.6,
+              color: AppColors.faint,
+            ),
+          ),
+          if (action != null) ...[const SizedBox(height: 16), action!],
         ],
       ),
     );

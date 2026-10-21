@@ -167,7 +167,7 @@ class _CoreExecution {
   bool _stdoutTruncated = false;
   int _stderrBytes = 0;
 
-  static const int _stdoutLimit = 16 * 1024 * 1024;
+  static const int _stdoutLimit = 64 * 1024 * 1024;
   static const int _stderrLimit = 256 * 1024;
 
   CoreRun start() {

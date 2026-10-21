@@ -407,3 +407,107 @@ class ExportKeyInfo {
     );
   }
 }
+
+/// `show <seq> --json` 的一项变更。
+class CommitOp {
+  const CommitOp({
+    required this.type,
+    required this.path,
+    required this.mode,
+    required this.size,
+    this.extra,
+  });
+
+  final String type;
+  final String path;
+  final int mode;
+  final int size;
+  final String? extra;
+
+  factory CommitOp.fromJson(Map<String, Object?> json) {
+    return CommitOp(
+      type: _string(json['type']),
+      path: _string(json['path']),
+      mode: _int(json['mode']),
+      size: _int(json['size']),
+      extra: json['extra'] == null ? null : _string(json['extra']),
+    );
+  }
+
+  bool get isDelete => type == 'delete' || type == 'rmdir';
+  bool get isDir => type == 'mkdir' || type == 'rmdir';
+}
+
+/// `show <seq> --json`。
+class CommitDetail {
+  const CommitDetail({
+    required this.seq,
+    required this.tsUnix,
+    required this.kind,
+    required this.message,
+    required this.dirs,
+    required this.packs,
+    required this.ops,
+  });
+
+  final int seq;
+  final int tsUnix;
+  final String kind;
+  final String message;
+  final int dirs;
+  final int packs;
+  final List<CommitOp> ops;
+
+  factory CommitDetail.fromJson(Map<String, Object?> json) {
+    final rawOps = json['ops'];
+    return CommitDetail(
+      seq: _int(json['seq']),
+      tsUnix: _int(json['ts_unix']),
+      kind: _string(json['kind']),
+      message: _string(json['msg']),
+      dirs: _int(json['dirs']),
+      packs: _int(json['packs']),
+      ops: rawOps is List
+          ? rawOps
+                .map((item) => CommitOp.fromJson(asJsonMap(item)))
+                .toList(growable: false)
+          : const <CommitOp>[],
+    );
+  }
+
+  DateTime get timestamp =>
+      DateTime.fromMillisecondsSinceEpoch(tsUnix * 1000);
+}
+
+/// `ls [prefix] --at <seq> --json` 的一项。
+class FileEntry {
+  const FileEntry({
+    required this.path,
+    required this.kind,
+    required this.mode,
+    required this.size,
+    required this.modTimeNs,
+    this.target,
+  });
+
+  final String path;
+  final String kind;
+  final int mode;
+  final int size;
+  final int modTimeNs;
+  final String? target;
+
+  factory FileEntry.fromJson(Map<String, Object?> json) {
+    return FileEntry(
+      path: _string(json['path']),
+      kind: _string(json['kind']),
+      mode: _int(json['mode']),
+      size: _int(json['size']),
+      modTimeNs: _int(json['modtime_ns']),
+      target: json['target'] == null ? null : _string(json['target']),
+    );
+  }
+
+  bool get isDir => kind == 'dir';
+  bool get isSymlink => kind == 'symlink';
+}

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// 低饱和深色底 + 翡翠绿强调色；避免纯黑和大面积高亮。
+/// 纯色深色界面：不使用任何渐变。
 abstract final class AppColors {
-  static const background = Color(0xFF070B14);
-  static const surface = Color(0xFF0D1424);
-  static const surfaceRaised = Color(0xFF131C30);
-  static const border = Color(0xFF22304D);
-  static const borderSoft = Color(0xFF1A2439);
-  static const text = Color(0xFFE8EDF8);
-  static const muted = Color(0xFF8D9DBA);
-  static const faint = Color(0xFF5D6C88);
+  static const background = Color(0xFF0A0D13);
+  static const surface = Color(0xFF111722);
+  static const surfaceRaised = Color(0xFF161E2B);
+  static const border = Color(0xFF253044);
+  static const borderSoft = Color(0xFF1B2433);
+  static const text = Color(0xFFE8EDF7);
+  static const muted = Color(0xFF94A2BC);
+  static const faint = Color(0xFF63718B);
   static const accent = Color(0xFF3DDC97);
-  static const accentDeep = Color(0xFF16946A);
+  static const accentDeep = Color(0xFF167A5A);
   static const blue = Color(0xFF6C9BFF);
   static const amber = Color(0xFFF2C14E);
   static const danger = Color(0xFFFF6B7A);
@@ -19,7 +19,7 @@ abstract final class AppColors {
 }
 
 ThemeData buildAppTheme() {
-  final scheme = const ColorScheme.dark(
+  const scheme = ColorScheme.dark(
     primary: AppColors.accent,
     onPrimary: Color(0xFF04140D),
     secondary: AppColors.blue,
@@ -31,12 +31,17 @@ ThemeData buildAppTheme() {
     outline: AppColors.border,
   );
 
+  const inputBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(9)),
+    borderSide: BorderSide(color: AppColors.border),
+  );
+
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.background,
-    splashFactory: InkSparkle.splashFactory,
+    splashFactory: InkRipple.splashFactory,
     textTheme: const TextTheme(
       displaySmall: TextStyle(
         fontSize: 34,
@@ -83,12 +88,34 @@ ThemeData buildAppTheme() {
       thickness: 1,
       space: 1,
     ),
+    inputDecorationTheme: const InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.surfaceRaised,
+      border: inputBorder,
+      enabledBorder: inputBorder,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(9)),
+        borderSide: BorderSide(color: AppColors.accent),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(9)),
+        borderSide: BorderSide(color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(9)),
+        borderSide: BorderSide(color: AppColors.danger),
+      ),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      hintStyle: TextStyle(color: AppColors.faint, fontSize: 13),
+      labelStyle: TextStyle(color: AppColors.muted, fontSize: 13),
+      errorStyle: TextStyle(color: AppColors.danger, fontSize: 11.5),
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.accent,
         foregroundColor: const Color(0xFF04140D),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
       ),
     ),
@@ -97,7 +124,7 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.text,
         side: const BorderSide(color: AppColors.border),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
       ),
     ),
@@ -106,6 +133,28 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.muted,
         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
+    ),
+    snackBarTheme: const SnackBarThemeData(
+      backgroundColor: AppColors.surfaceRaised,
+      contentTextStyle: TextStyle(color: AppColors.text, fontSize: 12.5),
+      behavior: SnackBarBehavior.floating,
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? AppColors.accent
+            : AppColors.faint,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? AppColors.accentDeep
+            : AppColors.border,
+      ),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.accent,
+      linearTrackColor: AppColors.borderSoft,
+      circularTrackColor: AppColors.borderSoft,
     ),
     scrollbarTheme: ScrollbarThemeData(
       thumbColor: WidgetStateProperty.all(AppColors.border),

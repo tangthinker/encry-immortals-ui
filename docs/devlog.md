@@ -5,6 +5,122 @@
 
 ---
 
+## 2026-10-21 23:18 · M1 MVP 完成：从演示壳层到真实产品流程
+
+### 目标与范围
+
+把 M0 的“只有自检页的壳层”替换成可实际使用的单 profile 客户端：创建/加入库、解锁、仪表盘、备份、历史、恢复、校验、设置，
+并按发布要求把 sidecar 打进 app bundle、签名、固定 SHA-256。范围按 `tech-selection.md` 的 M1，不含定时备份、自动更新、多 vault。
+
+### 产品/架构决策
+
+1. **删除所有渐变**：颜色改为纯色 surface/border/accent；`grep -rn "Gradient" lib` 为空。
+2. **删除 app 内调试功能**：移除 M0 自检页、截图钩子、`EIMMORTAL_AUTORUN_SELFTEST`、`dev_capture.dart`。
+   垂直切片保留在 `tool/vertical_slice.dart` 与 core 中，只作为开发/测试工具，不再出现在 UI。
+3. **移除 Riverpod，改为单一 `AppController` + ChangeNotifier**：单窗口、单 profile 的状态不需要额外容器；
+   onboarding/unlock/shell 用 phase 状态机，页面局部状态自管。依赖缩减为 `file_selector`、`window_manager`、`crypto`、`path`。
+4. **应用私有控制平面**：`~/Library/Application Support/EncryImmortals/vault`，不读写 CLI 的 `~/.eimmortal`；
+   TargetDir 仍由用户选择，移除配置不删除 TargetDir。v1 单 profile，避免与 CLI/多实例共享锚点状态。
+5. **源根目录固定**：创建时记录到 profile，设置页只读；换源必须移除配置后重新加入，防止同一 TargetDir 的链语义破坏。
+6. **所有真实命令经 `CommandQueue` 单飞**；任务通过 `QueueTicket.attach(run.cancel)` 注册取消，取消后等子进程退出再允许退出应用。
+
+### 新增/重写
+
+| 路径 | 内容 |
+|---|---|
+| `lib/app/app_controller.dart` | 启动、单实例、核心定位/哈希校验/版本、profile 装载、preview status、解锁/锁定、配置更新、退出 |
+| `lib/core/app_paths.dart` | macOS/Windows 应用数据目录，0700 |
+| `lib/core/profile.dart` / `profile_store.dart` | profile schema、原子写入、0600、TargetDir 保护 |
+| `lib/core/instance_lock.dart` | 单实例文件锁 |
+| `lib/core/progress.dart` | 备份/还原 stderr 进度解析，仅用于显示 |
+| `lib/core/lock_inspector.dart` | TargetDir 写锁读取/删除、Windows 控制锁标记 |
+| `lib/core/vault_session.dart` | 解锁、status/history/show/ls、backup/restore/verify/doctor、export-key、控制锁探测 |
+| `lib/core/onboarding_service.dart` | 创建/加入库的完整命令序列、校验、失败清理（绝不删 TargetDir） |
+| `lib/app/screens/**` | onboarding、解锁、主壳层、概览、备份、历史、恢复、校验、设置 |
+| `lib/app/widgets/snapshot_tree.dart` | 快照文件树、展开/折叠、路径过滤 |
+| `tool/build_core.sh` / `build_macos.sh` | sidecar 构建/签名/哈希、release app 打包 |
+| `tool/verify_bundle.dart` | bundle 路径、SHA-256、版本验证 |
+
+### 关键流程实现
+
+- **创建**：校验源/TargetDir 不重叠、TargetDir 为空 → config.toml(0600) → `init`(stdin) → `export-key --json` → 保存 profile。
+  失败会清理本次写下的 config/vault；`init` 成功后才删本地 vault，TargetDir 永不被删。
+- **加入**：config → `init --join` → `import-key`(stdin) → `log` 验证密码 → `doctor --chain` → 保存 profile。
+- **解锁**：`log --json` 探针；成功才把密码留在 session；每次解锁前重新校验 sidecar 哈希。
+- **备份**：`--dry-run` / 正式；stderr 日志 + 百分比进度；`truncated` 提供“继续备份”；E20/取消时展示锁文件 host/pid/started，
+  支持 `--break-lock` 重试；启动/备份后检测 TargetDir 写锁，在解锁页与主壳层显示横幅，设置页提供诊断与删除（高风险二次确认）。
+- **历史**：`log` → `show` → `ls --at`；文件树支持过滤与折叠；读取全部在内存。
+- **恢复**：强制 `doctor --chain` → `restore --list-packs`；缺失时要求“等待同步”或“跳过缺失 pack”二选一；
+  覆盖策略 `never/if-changed/always`，`always` 二次确认；支持 dry-run；E13/E12 仍解析 JSON 展示部分结果。
+- **校验**：`verify --sample N/--deep` + `doctor --chain`，PASS/WARN/FAIL 表格与失败项列表。
+- **设置**：profile/路径/核心完整性、`session_max_mib` 修改、导出 Armor Key（重新验证密码）、写锁诊断、立即锁定、移除本地配置、退出。
+- **退出保护**：window_manager 拦截关闭；命令运行中弹窗确认取消并等待队列 idle；单实例文件锁避免两个 UI。
+
+### 打包与签名
+
+`tool/build_macos.sh` 的实际顺序：
+
+1. `go build`（`CGO_ENABLED=0`，记录 `git describe`）→ `build/core/eimmortal`；
+2. **先 `codesign` sidecar，再计算 SHA-256**；
+3. `flutter build macos --release --dart-define=EIMMORTAL_CORE_SHA256=...`；
+4. 复制已签名 sidecar 到 `Contents/Resources/bin/`，签 app，校验 bundle 内哈希。
+
+实测：
+
+```text
+core: v0.1.5-4-g340cade
+sha256: d9fd1170eef95cc01c4a4431a2b2f2e7fbb36176603502f88cfce1563051dbf5
+app: build/macos/Build/Products/Release/Encry Immortals.app (53.3 MB)
+codesign --verify --deep --strict: valid
+dart run tool/verify_bundle.dart ...: source=bundle, integrity=verified
+```
+
+### 遇到的问题与修复
+
+1. **codesign 改写 Mach-O**：先算哈希再签名会导致运行时 `mismatch`。改为先签 sidecar、后算哈希，并把“bundle 内哈希 == 构建期常量”
+   作为脚本的最后一道断言。
+2. **sidecar 路径相对值**：`Process.start` 的工作目录是用户主目录，相对路径直接 `No such file or directory`；`CoreLocator` 统一返回绝对路径。
+3. **shell 变量紧邻中文**：`$CORE_HASH）` 被 bash 当成变量名的一部分，`set -u` 报 unbound variable；脚本统一改成 `${VAR}`。
+4. **widget test 中的真实 I/O**：`testWidgets` 的 fake async 不会驱动 `chmod`/文件写入，`await` 会挂起；组件测试必须把真实 I/O 放进
+   `tester.runAsync`，或改用普通 `test`。据此删除了之前临时的主页面 smoke 测试，保留真实链路的普通 integration test。
+5. **macOS 构建警告**：Xcode 提示 CoreSimulator 版本旧、Run Script 无 outputs；只影响 iOS 模拟器/构建提示，不影响 macOS 产物。
+6. **截图验证**：当前会话无屏幕录制权限，临时使用 `lib/dev_capture.dart` 的 RepaintBoundary 截图（已删除）；截得
+   onboarding / unlock / dashboard / backup / history / restore / verify / settings，保存在 `docs/assets/m1-*.jpg`。
+7. **App Sandbox**：沿袭 M0 结论，entitlements 已无 `com.apple.security.app-sandbox`；`codesign -d --entitlements` 复核。
+
+### 验证结果
+
+```text
+flutter analyze                          No issues found
+flutter test (不含真实 sidecar)           59 passed
+integration（3 个用例）                    passed（垂直切片 + 完整链路 + AppController 生命周期）
+flutter build macos --release             53.3 MB，ad-hoc 签名通过
+tool/verify_bundle.dart                   source=bundle, integrity=verified
+```
+
+真实链路覆盖：创建库 → 备份 → log/show/ls → status --chain → doctor → restore list-packs → restore → verify → export-key →
+第二台“机器”加入同一 TargetDir → 再次备份。AppController 覆盖：initialize → create → activate → lock → unlock →
+`session_max_mib` 写回 config/profile。integration 全量约 12 s。
+
+### 风险与未完成
+
+- [ ] Windows 宿主构建、`eimmortal-gui.exe` stdio、Windows 控制锁崩溃残留均未实测；脚本已写但未验证。
+- [ ] 仅 ad-hoc 签名，未做 Developer ID / notarization / Authenticode；不能直接对外分发。
+- [ ] 空闲自动锁定、上次中断状态持久化、崩溃后自动提示未做。
+- [ ] `ls` 仍一次加载整个快照树；大快照需要分页/前缀懒加载。
+- [ ] 应用私有控制平面与 CLI `~/.eimmortal` 不共享；不能同时用 CLI/GUI 操作同一 TargetDir。
+- [ ] 上游 P0（Windows `LockFileEx`、优雅取消）仍未落地，当前取消依赖 SIGTERM + 锁诊断。
+
+### 下一步
+
+1. 在 Windows 机器/CI 上跑 `tool/build_windows.ps1`，验证 GUI sidecar stdio 与锁；补 Windows 安装器。
+2. Developer ID + notarytool + stapling；Windows Authenticode。
+3. 空闲自动锁定、上次中断状态持久化、锁修复后的自动重试。
+4. 大快照分页/前缀懒加载；上游结构化进度（`--events=ndjson`）。
+5. 与上游确认是否共用控制平面；若共用，设计 profile 导入/迁移流程。
+
+---
+
 ## 2026-10-21 19:07 · M0 垂直切片完成（脚手架 + 网关 + UI 壳层）
 
 ### 目标
