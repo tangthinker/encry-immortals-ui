@@ -9,8 +9,15 @@ IDENTITY="${CODESIGN_IDENTITY:--}"
 # already universal; the Go sidecar must be merged explicitly.
 export TARGET_ARCH="${TARGET_ARCH:-universal}"
 eval "$("$ROOT/tool/build_core.sh")"
-lipo -verify_arch arm64 "$CORE_BIN"
-lipo -verify_arch x86_64 "$CORE_BIN"
+echo "sidecar archs: $(lipo -archs "$CORE_BIN")" >&2
+lipo -verify_arch arm64 "$CORE_BIN" || {
+  echo "::error::universal sidecar is missing arm64 (archs: $(lipo -archs "$CORE_BIN"))" >&2
+  exit 1
+}
+lipo -verify_arch x86_64 "$CORE_BIN" || {
+  echo "::error::universal sidecar is missing x86_64 (archs: $(lipo -archs "$CORE_BIN"))" >&2
+  exit 1
+}
 
 sign_code() {
   if [[ "$IDENTITY" == "-" ]]; then
@@ -43,11 +50,29 @@ printf '%s\n%s\n' "$CORE_VERSION" "$CORE_HASH" \
 # sidecar 在复制前已经签好；复制不会改变哈希。再签整个 app。
 sign_code "$APP"
 codesign --verify --deep --strict "$APP"
-lipo -verify_arch arm64 "$APP/Contents/MacOS/Encry Immortals"
-lipo -verify_arch x86_64 "$APP/Contents/MacOS/Encry Immortals"
-if [[ -f "$APP/Contents/Frameworks/App.framework/Versions/A/App" ]]; then
-  lipo -verify_arch arm64 "$APP/Contents/Frameworks/App.framework/Versions/A/App"
-  lipo -verify_arch x86_64 "$APP/Contents/Frameworks/App.framework/Versions/A/App"
+MAIN_BIN="$APP/Contents/MacOS/Encry Immortals"
+APP_BIN="$APP/Contents/Frameworks/App.framework/Versions/A/App"
+echo "app executable archs: $(lipo -archs "$MAIN_BIN")" >&2
+if [[ -f "$APP_BIN" ]]; then
+  echo "App.framework archs: $(lipo -archs "$APP_BIN")" >&2
+fi
+lipo -verify_arch arm64 "$MAIN_BIN" || {
+  echo "::error::app executable is missing arm64 (archs: $(lipo -archs "$MAIN_BIN"))" >&2
+  exit 1
+}
+lipo -verify_arch x86_64 "$MAIN_BIN" || {
+  echo "::error::app executable is missing x86_64 (archs: $(lipo -archs "$MAIN_BIN"))" >&2
+  exit 1
+}
+if [[ -f "$APP_BIN" ]]; then
+  lipo -verify_arch arm64 "$APP_BIN" || {
+    echo "::error::App.framework is missing arm64 (archs: $(lipo -archs "$APP_BIN"))" >&2
+    exit 1
+  }
+  lipo -verify_arch x86_64 "$APP_BIN" || {
+    echo "::error::App.framework is missing x86_64 (archs: $(lipo -archs "$APP_BIN"))" >&2
+    exit 1
+  }
 fi
 BUNDLED_HASH="$(shasum -a 256 "$APP/Contents/Resources/bin/eimmortal" | awk '{print $1}')"
 if [[ "$BUNDLED_HASH" != "$CORE_HASH" ]]; then

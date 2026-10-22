@@ -54,7 +54,17 @@ jobs:
         run: flutter --no-version-check test
 
       - name: Build signed universal app
-        run: ./tool/build_macos.sh
+        run: |
+          set +e
+          ./tool/build_macos.sh > build-macos.log 2>&1
+          status=$?
+          tail -80 build-macos.log
+          if [ "$status" -ne 0 ]; then
+            while IFS= read -r line; do
+              printf '::error::%s\n' "$line"
+            done < <(tail -30 build-macos.log)
+          fi
+          exit "$status"
 
       - name: Verify bundle and architectures
         run: |
