@@ -23,9 +23,9 @@
 </p>
 
 > [!NOTE]
-> **状态：MVP，持续开发中。** 最新 release `v0.2.0` 是 macOS arm64 构建。
-> `main` 还包含定时备份、完整参数设置、可持久化主题和新封印图标，下一版打 tag 时会一起发布。
-> 当前 macOS 构建使用 ad-hoc 签名，未公证；Windows 打包脚本已存在，但尚未在 Windows 宿主机验证。
+> **状态：MVP，持续开发中。** 最新 release `v0.2.1` 提供 **macOS universal 构建**（`x86_64 + arm64`）
+> 和 **Windows x64 安装包 + portable zip**。macOS 使用 ad-hoc 签名，未公证；
+> Windows 已由 CI 构建，但仍需在真实 Windows 宿主机验证并接入 Authenticode。
 
 ---
 
@@ -143,14 +143,19 @@ Encry Immortals 使用**应用内调度器**：
 
 ## 下载与安装
 
-**macOS（Apple Silicon）**：
+**macOS universal**（`x86_64 + arm64`）：
 
-- [`Encry-Immortals-v0.2.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.0/Encry-Immortals-v0.2.0-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.2.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.0/Encry-Immortals-v0.2.0-macOS-arm64.zip)
+- [`Encry-Immortals-v0.2.1-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-v0.2.1-macOS-universal.dmg)
+- [`Encry-Immortals-v0.2.1-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-v0.2.1-macOS-universal.zip)
 
 打开 DMG，把 **Encry Immortals** 拖入“应用程序”。这是 ad-hoc 签名、未公证的构建。
 
-**Windows**：仓库提供 [`tool/build_windows.ps1`](tool/build_windows.ps1)，但仍属实验性，尚未进入当前 release；GUI 子系统 stdio 与 Windows 控制锁还需要在真实 Windows 环境验证。
+**Windows x64**：
+
+- [`Encry-Immortals-0.2.1-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-0.2.1-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
+- [`Encry-Immortals-0.2.1-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-0.2.1-Windows-x64-portable.zip) — 免安装版本
+
+Windows 产物目前**未签名**；Authenticode 与 Windows 实机验证仍在路线图中。
 
 ## 从源码构建
 
@@ -201,11 +206,12 @@ EIMMORTAL_CORE_PATH=/path/to/eimmortal \
 1. 检出仓库和固定核心 submodule。
 2. 安装 Flutter `3.47.5` 与 Go `1.27.1`。
 3. 执行 `flutter analyze` 和测试。
-4. 构建 sidecar、签名、固定 hash、构建 macOS app。
-5. 校验 bundle，打包 `.zip` + `.dmg`。
-6. 创建 GitHub Release。
+4. 构建 universal sidecar、签名、固定 hash、构建 macOS app。
+5. 校验 bundle 与双架构，打包 `.zip` + `.dmg`。
+6. 构建 Windows x64、校验 sidecar hash、生成 Inno Setup 安装包和 portable zip。
+7. 把所有平台产物发布到 GitHub Release。
 
-当前 release workflow 只发布 macOS；Windows 在通过真实构建、签名和控制锁验证前不会进入 release。
+Windows 产物由 CI 构建，但在接入 Authenticode 前仍未签名。
 
 ## 目录结构
 

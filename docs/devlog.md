@@ -5,6 +5,57 @@
 
 ---
 
+## 2026-10-22 23:55 · v0.2.1：macOS universal + Windows 安装包
+
+### 目标
+
+GitHub Release 需要同时提供：
+
+- macOS `x86_64 + arm64` universal 包；
+- Windows x64 安装包和 portable zip。
+
+### macOS universal
+
+- Flutter app 本身已是 fat binary（`x86_64 arm64`），但 sidecar 之前只构建 host 架构。
+- `tool/build_core.sh` 新增 `TARGET_ARCH=universal`：
+  - 分别交叉编译 Go `arm64` / `amd64`；
+  - `lipo -create` 合并成 universal sidecar；
+  - 用 `lipo -archs` 校验两个架构。
+- `tool/build_macos.sh` 默认 universal，签名 sidecar 后再算 hash，并校验 app/App.framework/sidecar 双架构。
+- 第一次 CI 失败暴露了 Xcode 16.4 的 `lipo -verify_arch` 参数兼容问题；
+  改用跨版本稳定的 `lipo -archs`。
+
+### Windows 安装包
+
+- 新增 `packaging/windows/encry-immortals.iss`（Inno Setup 6）：
+  - per-user 安装，不需要管理员权限；
+  - 开始菜单/可选桌面快捷方式；
+  - 包含整个 Flutter Release 目录和 `bin/eimmortal-gui.exe`。
+- release workflow 新增 `windows-2022` job：
+  - 构建 Windows app + sidecar；
+  - 校验 `core-build.txt` 与 GUI sidecar SHA-256；
+  - 用 Inno Setup 生成 `Encry-Immortals-0.2.1-Windows-x64.exe`；
+  - 生成 portable zip。
+- Windows 安装包与 exe 仍未 Authenticode 签名，也未在物理 Windows 宿主上人工验证。
+
+### 发布结果
+
+- tag `v0.2.1`，commit `5940609`
+- [GitHub Release](https://github.com/tangthinker/encry-immortals-ui/releases/tag/v0.2.1)：
+  - `Encry-Immortals-v0.2.1-macOS-universal.dmg`（约 29.2 MB）
+  - `Encry-Immortals-v0.2.1-macOS-universal.zip`（约 25.8 MB）
+  - `Encry-Immortals-0.2.1-Windows-x64.exe`（Inno Setup，约 16.4 MB）
+  - `Encry-Immortals-0.2.1-Windows-x64-portable.zip`（约 20 MB）
+- CI 验证：Flutter analyze、86 tests、universal arch、sidecar hash、Windows app sidecar hash、安装包生成。
+
+### 遗留
+
+- Windows：Authenticode、物理机 GUI-subsystem stdio/控制锁验证。
+- macOS：Developer ID 公证、stapling。
+- README 下载链接与架构图已更新到 v0.2.1。
+
+---
+
 ## 2026-10-22 23:00 · 定时备份：每天/每周/每月/固定间隔
 
 ### 目标

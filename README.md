@@ -23,10 +23,9 @@
 </p>
 
 > [!NOTE]
-> **Status: MVP, actively developed.** Latest release `v0.2.0` is a macOS arm64 build.
-> `main` also includes scheduled backups, the full parameter studio, persisted themes and the new seal icon;
-> the next tagged release will package them. The macOS build is ad-hoc signed (not notarized).
-> Windows packaging is implemented but has not yet been validated on a Windows host.
+> **Status: MVP, actively developed.** Latest release `v0.2.1` ships a **universal macOS build** (`x86_64 + arm64`)
+> and a **Windows x64 installer + portable zip**. The macOS build is ad-hoc signed (not notarized);
+> Windows is CI-built but still needs physical-host validation and Authenticode signing before wider distribution.
 
 ---
 
@@ -144,14 +143,19 @@ The app **must be running and unlocked** for a scheduled backup to execute. The 
 
 ## Download & install
 
-**macOS (Apple Silicon)** — latest release:
+**macOS universal** — latest release (`x86_64 + arm64`):
 
-- [`Encry-Immortals-v0.2.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.0/Encry-Immortals-v0.2.0-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.2.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.0/Encry-Immortals-v0.2.0-macOS-arm64.zip)
+- [`Encry-Immortals-v0.2.1-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-v0.2.1-macOS-universal.dmg)
+- [`Encry-Immortals-v0.2.1-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-v0.2.1-macOS-universal.zip)
 
 Open the DMG, drag **Encry Immortals** to Applications, and launch it. The build is ad-hoc signed and not notarized.
 
-**Windows** — a PowerShell build script exists at [`tool/build_windows.ps1`](tool/build_windows.ps1), but it is experimental and not part of the current release. GUI-subsystem stdio and Windows control locks still need a real Windows validation pass.
+**Windows x64** — latest release:
+
+- [`Encry-Immortals-0.2.1-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-0.2.1-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
+- [`Encry-Immortals-0.2.1-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-0.2.1-Windows-x64-portable.zip) — portable build
+
+The Windows artifacts are **unsigned**; Authenticode and physical Windows testing are still roadmap items.
 
 ## Build from source
 
@@ -203,10 +207,11 @@ Pushing a `v*` tag triggers [`.github/workflows/release.yml`](.github/workflows/
 2. Install Flutter `3.47.5` and Go `1.27.1`.
 3. Run `flutter analyze` and the test suite.
 4. Build the sidecar, sign it, pin its hash and build the macOS app.
-5. Verify the bundle and package `.zip` + `.dmg`.
-6. Publish a GitHub Release.
+5. Verify the bundle and package the universal `.zip` + `.dmg`.
+6. Build Windows x64, verify the sidecar hash, create the Inno Setup installer and portable zip.
+7. Publish all platform artifacts to GitHub Releases.
 
-The release workflow currently publishes macOS builds only. Windows is deliberately excluded until it has a validated build/signing path.
+Windows artifacts are produced in CI but remain unsigned until Authenticode is wired up.
 
 ## Project layout
 
