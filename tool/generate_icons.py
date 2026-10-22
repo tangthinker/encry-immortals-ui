@@ -1,102 +1,116 @@
 #!/usr/bin/env python3
-"""生成 Encry Immortals 的 macOS/Windows 应用图标（无渐变，封印 + 钥匙孔）。"""
+"""Build macOS/Windows app icons from the committed 1024px PNG masters.
+
+Design sources live in assets/icon/*.svg. The PNG masters are rendered from
+those SVGs with rsvg/Chrome; see assets/icon/README.md. Keeping the masters
+checked in makes release builds independent of a browser installation.
+
+macOS:
+  1024/512/256/128 -> macos-master (full seal + paper detail)
+  64/32            -> macos-small  (simplified for 32pt)
+  16               -> macos-tiny   (solid, high-contrast)
+
+Windows:
+  ICO 16/24/32/48  -> windows-small (transparent, ink outline)
+  ICO 64/128/256   -> windows-master (transparent, full detail)
+"""
+from __future__ import annotations
+
+import struct
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-SCALE = 4
-SIZE = 1024 * SCALE
-INK = (21, 26, 33, 255)
-BRASS = (210, 174, 99, 255)
-BRASS_DIM = (143, 116, 47, 255)
-PAPER = (237, 231, 218, 255)
-SUCCESS = (100, 201, 159, 255)
-BORDER = (45, 55, 66, 255)
+ICON_DIR = ROOT / "assets" / "icon"
+MACOS_SET = ROOT / "macos/Runner/Assets.xcassets/AppIcon.appiconset"
+WINDOWS_ICO = ROOT / "windows/runner/resources/app_icon.ico"
 
 
-def rounded_rect(draw, box, radius, fill):
-    draw.rounded_rectangle(box, radius=radius, fill=fill)
+def load(name: str) -> Image.Image:
+    path = ICON_DIR / f"{name}.png"
+    if not path.exists():
+        raise SystemExit(f"missing icon master: {path}")
+    image = Image.open(path).convert("RGBA")
+    if image.size != (1024, 1024):
+        raise SystemExit(f"{path} must be 1024x1024, got {image.size}")
+    return image
 
 
-def main():
-    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    inset = 100 * SCALE
-    rounded_rect(
-        draw,
-        (inset, inset, SIZE - inset, SIZE - inset),
-        radius=185 * SCALE,
-        fill=INK,
-    )
-    draw.rounded_rectangle(
-        (inset, inset, SIZE - inset, SIZE - inset),
-        radius=185 * SCALE,
-        outline=BORDER,
-        width=8 * SCALE,
-    )
+def resize(image: Image.Image, size: int) -> Image.Image:
+    return image.resize((size, size), Image.Resampling.LANCZOS)
 
-    cx = cy = SIZE // 2
-    ring = 250 * SCALE
-    draw.ellipse(
-        (cx - ring, cy - ring, cx + ring, cy + ring),
-        outline=BRASS,
-        width=32 * SCALE,
-    )
-    draw.ellipse(
-        (cx - ring + 18 * SCALE, cy - ring + 18 * SCALE,
-         cx + ring - 18 * SCALE, cy + ring - 18 * SCALE),
-        outline=BRASS_DIM,
-        width=6 * SCALE,
-    )
 
-    # 钥匙孔：圆形 + 向下收窄的锁芯。
-    key_circle = 64 * SCALE
-    draw.ellipse(
-        (cx - key_circle, cy - key_circle - 48 * SCALE,
-         cx + key_circle, cy + key_circle - 48 * SCALE),
-        fill=PAPER,
-    )
-    draw.polygon(
-        [
-            (cx - 42 * SCALE, cy + 2 * SCALE),
-            (cx + 42 * SCALE, cy + 2 * SCALE),
-            (cx + 78 * SCALE, cy + 158 * SCALE),
-            (cx - 78 * SCALE, cy + 158 * SCALE),
-        ],
-        fill=PAPER,
-    )
+def write_macos(master: Image.Image, small: Image.Image, tiny: Image.Image) -> None:
+    MACOS_SET.mkdir(parents=True, exist_ok=True)
+    sources = {
+        1024: master,
+        512: master,
+        256: master,
+        128: master,
+        64: small,
+        32: small,
+        16: tiny,
+    }
+    for size, source in sources.items():
+        resize(source, size).save(
+            MACOS_SET / f"app_icon_{size}.png", optimize=True
+        )
+    print(f"macOS icons: {len(sources)} sizes -> {MACOS_SET}")
 
-    # 已验证徽标。
-    badge_x, badge_y, badge_r = cx + 176 * SCALE, cy + 176 * SCALE, 62 * SCALE
-    draw.ellipse(
-        (badge_x - badge_r, badge_y - badge_r,
-         badge_x + badge_r, badge_y + badge_r),
-        fill=SUCCESS,
-        outline=INK,
-        width=10 * SCALE,
-    )
-    draw.line(
-        [(badge_x - 30 * SCALE, badge_y + 2 * SCALE),
-         (badge_x - 6 * SCALE, badge_y + 28 * SCALE),
-         (badge_x + 34 * SCALE, badge_y - 22 * SCALE)],
-        fill=INK,
-        width=12 * SCALE,
-        joint="curve",
-    )
 
-    icon_dir = ROOT / "macos/Runner/Assets.xcassets/AppIcon.appiconset"
-    icon_dir.mkdir(parents=True, exist_ok=True)
-    for size in (16, 32, 64, 128, 256, 512, 1024):
-        resized = img.resize((size, size), Image.LANCZOS)
-        resized.save(icon_dir / f"app_icon_{size}.png")
+def write_ico(master: Image.Image, small: Image.Image) -> None:
+    """Write a PNG-compressed ICO (Windows Vista+ supports PNG entries)."""
+    entries = [
+        (16, small),
+        (24, small),
+        (32, small),
+        (48, small),
+        (64, master),
+        (128, master),
+        (256, master),
+    ]
+    payloads: list[tuple[int, bytes]] = []
+    for size, source in entries:
+        from io import BytesIO
 
-    ico = img.resize((1024, 1024), Image.LANCZOS)
-    ico.save(
-        ROOT / "windows/runner/resources/app_icon.ico",
-        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
-    )
-    print("icons written")
+        buffer = BytesIO()
+        resize(source, size).save(buffer, format="PNG", optimize=True)
+        payloads.append((size, buffer.getvalue()))
+
+    header = struct.pack("<HHH", 0, 1, len(payloads))
+    directory = bytearray()
+    offset = len(header) + 16 * len(payloads)
+    for size, payload in payloads:
+        directory += struct.pack(
+            "<BBBBHHII",
+            0 if size == 256 else size,
+            0 if size == 256 else size,
+            0,
+            0,
+            1,
+            32,
+            len(payload),
+            offset,
+        )
+        offset += len(payload)
+    WINDOWS_ICO.parent.mkdir(parents=True, exist_ok=True)
+    WINDOWS_ICO.write_bytes(header + directory + b"".join(p for _, p in payloads))
+    print(f"Windows ICO: {[s for s, _ in payloads]} -> {WINDOWS_ICO}")
+
+
+def main() -> None:
+    master = load("macos-master")
+    small = load("macos-small")
+    tiny = load("macos-tiny")
+    win_master = load("windows-master")
+    win_small = load("windows-small")
+    write_macos(master, small, tiny)
+    write_ico(win_master, win_small)
+
+    with Image.open(WINDOWS_ICO) as ico:
+        sizes = sorted(ico.info.get("sizes", []))
+        print(f"verify ICO: {sizes}")
 
 
 if __name__ == "__main__":

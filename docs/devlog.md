@@ -5,6 +5,77 @@
 
 ---
 
+## 2026-10-22 22:30 · 应用图标重做：封印 + 无穷（不再使用字母/钥匙）
+
+### 目标
+
+原图标（钥匙孔）和本轮的骨架钥匙稿都被判定不好看。重做一个独立的品牌图标：
+不要字母、不要具象钥匙、不要渐变/AI 味的霓虹或玻璃质感；macOS 与 Windows 都要有各自合适的版本。
+
+### 最终方案
+
+**黄铜蜡封压在纸面上的“无穷”标记**：
+
+- 无穷符号 = Immortals 的“永续” + 备份链的“链环”；比字母 E 更抽象，比钥匙更克制。
+- 外圈是手压蜡封的 26 瓣不完美边缘；内圈是纸面嵌片，带轻微纸纤维与压印阴影。
+- 无穷用深墨色“压”在纸上，保留 letterpress 的偏移阴影；没有渐变、没有高光塑料感。
+- 极简三色：深墨 `#10161A`、黄铜 `#C9A35B`、纸 `#EADFCB`；辅助暗黄铜/纸影。
+- macOS 使用 824/1024 的 squircle 网格（superellipse，不是普通圆角矩形）；Windows 版本去 tile、透明背景，加平滑深色轮廓。
+
+### 被否决的方向
+
+| 方向 | 否决原因 |
+|---|---|
+| 骨架钥匙 | 太具象、粗黑钥匙齿在 16px 像图标字体，确实不好看 |
+| 字母 E 圆章 | 太像通用 monogram，缺少产品故事 |
+| 文档 + 火漆章 | 340px 好看，16px 像收据/备忘录 |
+| 两节链环 / 结 | 缩小后变成一坨，交叉关系不清晰 |
+| 中心铆钉 / 绿色弧线 | 铆钉像眼睛，绿色弧线像划痕；删掉更干净 |
+| 顶部挂环 | 像怀表/奖章，偏离备份语义 |
+
+### 平台优化
+
+- **macOS**：`macos-master`（128–1024，完整细节）、`macos-small`（32/64，简化蜡封与加粗无穷）、`macos-tiny`（16，去掉纸纹/环刻，保证小尺寸对比）。
+- **Windows**：透明背景；`windows-small`（16–48，厚金环 + 深轮廓）、`windows-master`（64–256，完整细节 + 平滑深色轮廓）。ICO 使用 16/24/32/48/64/128/256 七个 PNG 条目（Vista+）。
+- macOS 资源目录：16/32/64/128/256/512/1024；Windows ICO 已用 `file` 与 PIL 验证 7 个尺寸。
+
+### 文件
+
+```text
+assets/icon/
+  macos-master.svg/png      完整设计源 + 1024 master
+  macos-small.svg/png
+  macos-tiny.svg/png
+  windows-master.svg/png
+  windows-small.svg/png
+  README.md                 设计说明 / 重新渲染方法
+tool/generate_icons.py      从 PNG masters 生成平台资源
+tool/render_icon_svgs.py    用 headless Chrome 从 SVG 重渲染 masters
+```
+
+设计完全矢量（无字体依赖）；PNG masters 已入库，因此 release 构建不依赖 Chrome。
+
+### 验证
+
+```text
+tool/generate_icons.py       macOS 7 sizes + Windows ICO 7 sizes
+PIL ICO check                16/24/32/48/64/128/256
+flutter build macos --debug  成功；Assets.car 含 AppIcon renditions
+assetutil --info              AppIcon 16..1024 均存在
+flutter build macos --release 52 MB；bundle 签名与 sidecar 校验通过
+app icon preview              docs/assets/app-icon-preview.jpg
+```
+
+预览：[app-icon-preview.jpg](assets/app-icon-preview.jpg)；原图 [app-icon.png](assets/app-icon.png)。
+
+### 风险 / 下一步
+
+- 尚未在 Windows 实机检查任务栏/开始菜单的实际观感；ICO 使用 PNG 条目，Windows 10+ 支持。
+- macOS 可能缓存旧图标；升级安装后如仍显示旧图，需要清理图标缓存或重启 Dock。
+- 图标是品牌资产，后续若改主色/蜡封方向，需要同步更新 5 个 SVG 与 masters并重跑生成器。
+
+---
+
 ## 2026-10-22 21:20 · 参数设置：初始化向导 + 设置页全参数
 
 ### 目标

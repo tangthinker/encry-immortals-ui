@@ -9,6 +9,8 @@
 > 技术结论见 [技术选型](docs/tech-selection.md)，进程与 JSON 契约见 [集成契约](docs/integration-contract.md)，
 > 每轮开发记录见 [开发日志](docs/devlog.md)。
 
+![应用图标](docs/assets/app-icon-preview.jpg)
+
 ![创建/加入库](docs/assets/m1-onboarding.jpg)
 
 ![仪表盘](docs/assets/m1-dashboard.jpg)
@@ -50,7 +52,7 @@
 - **层级**：系统字体负责导航/控件，Menlo 负责路径、hash、seq；桌面最小字号 10pt；控件保持 macOS 的紧凑命中区。
 - **桌面惯例**：原生菜单栏、⌘1–5/⌘⇧B/⌘⇧R/⌘L/⌘, 等快捷键、内容化窗口标题、侧边栏顶部更多菜单；
   锁定不再放在侧边栏底部。
-- **图标**：`tool/generate_icons.py` 生成无渐变的“封印 + 钥匙孔”应用图标，macOS 全套尺寸 + Windows `.ico`。
+- **图标**：黄铜封印压在纸面上的“无穷/备份链”标记，不使用字母、钥匙或渐变。macOS 用 squircle 网格与 16/32 简化版；Windows 用透明背景 + 深色轮廓的 ICO。SVG 源文件与 1024px masters 在 `assets/icon/`，由 `tool/generate_icons.py` 生成平台资源。
 
 ## 参数模型
 
@@ -175,6 +177,7 @@ dart run tool/verify_bundle.dart \
 ## 目录结构
 
 ```text
+assets/icon/                ICON 设计源文件（SVG + 1024 PNG masters）
 lib/
   app/
     app_controller.dart     启动/单实例/核心校验/profile/解锁状态机
@@ -197,7 +200,8 @@ tool/
   build_macos.sh            release app + 签名 + 校验
   build_windows.ps1         Windows 构建（未实测）
   xcode_debug_sidecar.sh    Debug 构建自动注入 sidecar
-  generate_icons.py         生成 macOS/Windows 应用图标
+  generate_icons.py         从 masters 生成 macOS 图标与 Windows ICO
+  render_icon_svgs.py       从 SVG 重渲染 1024 PNG masters（需要 Chrome）
   verify_bundle.dart        bundle 路径/哈希/版本验证
   vertical_slice.dart       终端版冒烟
 ```
