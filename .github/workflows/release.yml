@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.47.5'
+  GO_VERSION: '1.27.1'
+
+jobs:
+  macos:
+    name: Build macOS app
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: third_party/encry-immortals/go.sum
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Toolchain versions
+        run: |
+          set -euo pipefail
+          flutter --version
+          go version
+          xcodebuild -version
+
+      - name: Install dependencies
+        run: flutter --no-version-check pub get
+
+      - name: Analyze
+        run: flutter --no-version-check analyze
+
+      - name: Unit and widget tests
+        run: flutter --no-version-check test
+
+      - name: Build signed release app
+        run: ./tool/build_macos.sh
+
+      - name: Verify bundle
+        run: |
+          set -euo pipefail
+          dart run tool/verify_bundle.dart \
+            "build/macos/Build/Products/Release/Encry Immortals.app" \
+            "$(cat build/core/eimmortal.sha256)"
+
+      - name: Package zip and dmg
+        run: |
+          set -euo pipefail
+          APP="build/macos/Build/Products/Release/Encry Immortals.app"
+          ARCH="$(uname -m)"
+          BASE="Encry-Immortals-${GITHUB_REF_NAME}-macOS-${ARCH}"
+
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "${BASE}.zip"
+
+          mkdir -p build/dmg
+          cp -R "$APP" build/dmg/
+          ln -s /Applications build/dmg/Applications
+          hdiutil create \
+            -volname "Encry Immortals" \
+            -srcfolder build/dmg \
+            -ov -format UDZO \
+            "${BASE}.dmg"
+
+          ls -lh "${BASE}.zip" "${BASE}.dmg"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: |
+            Encry-Immortals-*.zip
+            Encry-Immortals-*.dmg
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs: macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-release
+          path: dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Encry Immortals ${{ github.ref_name }}
+          generate_release_notes: true
+          append_body: |
+            ## macOS
+
+            - 构建：Flutter `3.47.5`，核心 `v0.1.5`，架构见产物文件名。
+            - 签名：ad-hoc。未做 Developer ID 公证；首次打开如被 Gatekeeper 阻止，请右键打开，或执行
+              `xattr -dr com.apple.quarantine "Encry Immortals.app"`。
+            - 测试：`flutter analyze`、77 个单元/组件测试、bundle 内 sidecar SHA-256 校验。
+          files: dist/*
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false

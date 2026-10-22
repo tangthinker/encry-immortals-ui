@@ -206,6 +206,23 @@ tool/
   vertical_slice.dart       终端版冒烟
 ```
 
+## 发布
+
+推送 `v*` tag 会触发 [`.github/workflows/release.yml`](.github/workflows/release.yml)：
+
+```bash
+git tag -a v0.2.0 -m "Encry Immortals 0.2.0"
+git push origin main
+git push origin v0.2.0
+```
+
+工作流在 `macos-15` 上安装 Flutter `3.47.5` 与 Go `1.27.1`，执行 analyze/test，构建并校验
+sidecar bundle，上传 `.zip` 与 `.dmg`，最后创建 GitHub Release。macOS 产物是当前 runner
+架构（Apple Silicon 或 Intel，见文件名），使用 ad-hoc 签名，未公证。
+
+Windows 的打包脚本仍在仓库中，但尚未在 Windows 宿主/CI 实测，因此当前 release workflow
+只发布 macOS 产物。
+
 ## 已知限制
 
 - 单 profile；不做定时/无人值守备份、自动更新、多 vault、文件预览、`compact`/`gc` 图形化。
