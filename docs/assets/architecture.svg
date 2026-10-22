@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="840" viewBox="0 0 1440 840">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8C7B63"/>
+    </marker>
+    <marker id="arrowBrass" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#B08A3E"/>
+    </marker>
+  </defs>
+  <rect width="1440" height="840" fill="#F3EEE4"/>
+  <text x="60" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="34" font-weight="700" fill="#1E1B16">Encry Immortals</text>
+  <text x="60" y="104" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" fill="#6F675A">Local-first encrypted incremental backups · architecture</text>
+  <text x="1380" y="72" text-anchor="end" font-family="Menlo,Consolas,monospace" font-size="12" fill="#8C7B63">v0.2.0 · contract v1</text>
+  <line x1="60" y1="128" x2="1380" y2="128" stroke="#D8CEBD" stroke-width="1"/>
+
+  <!-- UI container -->
+  <rect x="60" y="158" width="490" height="530" rx="18" fill="#FCF9F3" stroke="#D8CEBD"/>
+  <text x="88" y="196" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="19" font-weight="700" fill="#1E1B16">Flutter desktop UI</text>
+  <text x="88" y="218" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" fill="#6F675A">macOS 12+ · Windows 10+ · no web app</text>
+  <rect x="88" y="246" width="434" height="54" rx="10" fill="#F3EEE4" stroke="#E2D8C8"/>
+  <text x="108" y="268" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#1E1B16">Screens</text>
+  <text x="108" y="286" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">onboarding · dashboard · backup · history · restore · verify · settings</text>
+  <rect x="88" y="320" width="434" height="54" rx="10" fill="#F3EEE4" stroke="#E2D8C8"/>
+  <text x="108" y="342" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#1E1B16">AppController</text>
+  <text x="108" y="360" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">state machine · profile · theme · schedule · ChangeNotifier</text>
+  <rect x="88" y="394" width="434" height="54" rx="10" fill="#F3EEE4" stroke="#E2D8C8"/>
+  <text x="108" y="416" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#1E1B16">VaultSession</text>
+  <text x="108" y="434" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">typed commands · password held in memory only</text>
+  <rect x="88" y="468" width="434" height="54" rx="10" fill="#F3EEE4" stroke="#E2D8C8"/>
+  <text x="108" y="490" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#1E1B16">CommandQueue</text>
+  <text x="108" y="508" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">serial execution · cancellation · one sidecar at a time</text>
+  <text x="88" y="564" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#8C7B63">No secrets in argv, env, temp files or logs.</text>
+  <text x="88" y="584" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#8C7B63">All state is observably driven by sidecar JSON.</text>
+  <line x1="305" y1="414" x2="305" y2="466" stroke="#8C7B63" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <line x1="305" y1="340" x2="305" y2="392" stroke="#8C7B63" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+  <!-- Sidecar -->
+  <rect x="620" y="226" width="320" height="330" rx="18" fill="#10161A" stroke="#2B3438"/>
+  <text x="648" y="266" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" letter-spacing="1.4" fill="#D2AE63">SIDECAR</text>
+  <text x="648" y="296" font-family="Menlo,Consolas,monospace" font-size="20" font-weight="700" fill="#EDE7DA">eimmortal</text>
+  <text x="648" y="319" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" fill="#B0A99C">Go · single binary · pinned via submodule</text>
+  <line x1="648" y1="338" x2="912" y2="338" stroke="#2D3742"/>
+  <text x="648" y="368" font-family="Menlo,Consolas,monospace" font-size="12.5" fill="#EDE7DA">init · backup · restore</text>
+  <text x="648" y="392" font-family="Menlo,Consolas,monospace" font-size="12.5" fill="#EDE7DA">log · show · ls</text>
+  <text x="648" y="416" font-family="Menlo,Consolas,monospace" font-size="12.5" fill="#EDE7DA">status · verify · doctor</text>
+  <text x="648" y="452" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#B0A99C">stdout  → JSON</text>
+  <text x="648" y="470" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#B0A99C">stderr  → human progress</text>
+  <text x="648" y="488" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#B0A99C">stdin   → password (never persisted)</text>
+  <rect x="648" y="510" width="264" height="26" rx="13" fill="#18352C"/>
+  <text x="660" y="527" font-family="Menlo,Consolas,monospace" font-size="10.5" fill="#64C99F">exit codes 0/1/2/10/11/12/13/14/20/21/130</text>
+  <line x1="550" y1="391" x2="620" y2="391" stroke="#B08A3E" stroke-width="2" marker-end="url(#arrowBrass)"/>
+  <text x="585" y="379" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="10.5" fill="#8C7B63">spawn</text>
+
+  <!-- Control plane -->
+  <rect x="1010" y="158" width="370" height="190" rx="18" fill="#FCF9F3" stroke="#D8CEBD"/>
+  <text x="1038" y="196" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="17" font-weight="700" fill="#1E1B16">App-private control plane</text>
+  <text x="1038" y="218" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">macOS: ~/Library/Application Support/EncryImmortals</text>
+  <text x="1038" y="236" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">Windows: %APPDATA%\EncryImmortals</text>
+  <text x="1038" y="260" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">vault.meta · state.db · journal</text>
+  <text x="1038" y="280" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">config.toml (0600) · profile.json</text>
+  <text x="1038" y="308" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" fill="#8C7B63">Never synced to TargetDir.</text>
+  <line x1="940" y1="318" x2="1010" y2="278" stroke="#8C7B63" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+  <!-- TargetDir -->
+  <rect x="1010" y="386" width="370" height="240" rx="18" fill="#FCF9F3" stroke="#D8CEBD"/>
+  <text x="1038" y="424" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="17" font-weight="700" fill="#1E1B16">TargetDir</text>
+  <text x="1038" y="446" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">user-chosen · syncable by iCloud / NAS / etc.</text>
+  <text x="1038" y="474" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">data/ · packs · ciphertext</text>
+  <text x="1038" y="494" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">meta/ · manifests · journal</text>
+  <text x="1038" y="526" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" fill="#8C7B63">Source root is fixed per profile.</text>
+  <text x="1038" y="546" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" fill="#8C7B63">Only ciphertext and metadata live here.</text>
+  <line x1="940" y1="450" x2="1010" y2="464" stroke="#8C7B63" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+  <!-- Source -->
+  <rect x="620" y="610" width="320" height="92" rx="16" fill="#FCF9F3" stroke="#D8CEBD"/>
+  <text x="648" y="642" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#1E1B16">Source directory</text>
+  <text x="648" y="664" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">local files · read-only from the sidecar</text>
+  <text x="648" y="682" font-family="Menlo,Consolas,monospace" font-size="11" fill="#8C7B63">scan → chunk → compress → encrypt → pack</text>
+  <line x1="780" y1="610" x2="780" y2="556" stroke="#B08A3E" stroke-width="2" marker-end="url(#arrowBrass)"/>
+
+  <!-- Release trust -->
+  <rect x="60" y="724" width="1320" height="76" rx="16" fill="#10161A"/>
+  <text x="88" y="756" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" letter-spacing="1.2" fill="#D2AE63">RELEASE TRUST</text>
+  <text x="88" y="779" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12.5" fill="#EDE7DA">sidecar is signed with codesign → SHA-256 is pinned at build time → the app verifies the hash before launch and every unlock.</text>
+  <text x="1352" y="756" text-anchor="end" font-family="Menlo,Consolas,monospace" font-size="11" fill="#B0A99C">ad-hoc / Developer ID</text>
+  <text x="1352" y="774" text-anchor="end" font-family="Menlo,Consolas,monospace" font-size="11" fill="#B0A99C">notarization: roadmap</text>
+</svg>

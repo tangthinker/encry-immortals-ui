@@ -1,253 +1,267 @@
-# encry-immortals-ui
+<p align="center">
+  <img src="docs/assets/app-icon.png" width="112" alt="Encry Immortals app icon">
+</p>
 
-[`encry-immortals`](https://github.com/tangthinker/encry-immortals)（eimmortal）的桌面客户端，目标平台 **macOS 12+ / Windows 10+**。
+<h1 align="center">Encry Immortals</h1>
 
-> 状态：**M1 MVP + 参数设置 + Apple HIG 设计打磨**（2026-10-22）。创建/加入库、解锁、仪表盘、备份、历史、恢复、校验、设置与 Key 导出均已可用；
-> 默认浅色，可在设置中切换跟随系统/深色；提供原生菜单栏与快捷键；release sidecar 固定 SHA-256 并验证。
-> Windows 构建脚本已提供但尚未在 Windows 宿主实测；Developer ID 公证与 Authenticode 签名仍属于发布阶段工作。
->
-> 技术结论见 [技术选型](docs/tech-selection.md)，进程与 JSON 契约见 [集成契约](docs/integration-contract.md)，
-> 每轮开发记录见 [开发日志](docs/devlog.md)。
+<p align="center">
+  <strong>Local-first, encrypted, incremental backups for macOS and Windows.</strong><br>
+  <sub>No account. No cloud lock-in. No master password on disk.</sub>
+</p>
 
-![应用图标](docs/assets/app-icon-preview.jpg)
+<p align="center">
+  <a href="README.zh-CN.md">简体中文</a> · <strong>English</strong>
+</p>
 
-![创建/加入库](docs/assets/m1-onboarding.jpg)
+<p align="center">
+  <a href="https://github.com/tangthinker/encry-immortals-ui/releases"><img alt="Release" src="https://img.shields.io/github/v/release/tangthinker/encry-immortals-ui?label=release&color=B08A3E"></a>
+  <a href="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml"><img alt="Release workflow" src="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml/badge.svg"></a>
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter&logoColor=white">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-86-2F7D63">
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-10161A">
+</p>
 
-![仪表盘](docs/assets/m1-dashboard.jpg)
+> [!NOTE]
+> **Status: MVP, actively developed.** Latest release `v0.2.0` is a macOS arm64 build.
+> `main` also includes scheduled backups, the full parameter studio, persisted themes and the new seal icon;
+> the next tagged release will package them. The macOS build is ad-hoc signed (not notarized).
+> Windows packaging is implemented but has not yet been validated on a Windows host.
 
-![浅色外观](docs/assets/m1-dashboard-light.jpg)
+---
 
-更多界面：[解锁](docs/assets/m1-unlock.jpg) · [解锁（浅色）](docs/assets/m1-unlock-light.jpg) · [备份](docs/assets/m1-backup.jpg) ·
-[历史](docs/assets/m1-history.jpg) · [恢复](docs/assets/m1-restore.jpg) · [校验](docs/assets/m1-verify.jpg) ·
-[设置](docs/assets/m1-settings.jpg) · [设置（浅色）](docs/assets/m1-settings-light.jpg) ·
-[初始化参数](docs/assets/m1-onboarding-params.jpg) · [初始化参数（浅色）](docs/assets/m1-onboarding-params-light.jpg) ·
-[设置参数](docs/assets/m1-settings-params.jpg) · [设置参数（浅色）](docs/assets/m1-settings-params-light.jpg)。
+**Contents:** [Why](#why-encry-immortals) · [Screens](#a-quick-look) · [Features](#what-it-does) · [Architecture](#architecture) · [Security](#security-model) · [Download](#download--install) · [Build](#build-from-source) · [Roadmap](#roadmap--known-limitations)
 
-## 已实现功能
+## Why Encry Immortals?
 
-| 流程 | 内容 |
+Most backup tools ask you to trust an account, a sync provider, or a proprietary blob format.
+Encry Immortals takes a different route:
+
+- **A local vault, sealed by a chain.** Every backup produces a verifiable commit; every restore starts with a `doctor --chain` preflight.
+- **A separate Go sidecar, not a black box.** The UI speaks a typed, documented JSON contract to the `eimmortal` binary. The CLI exposes the same core operations the GUI uses.
+- **No password storage.** The master password is sent through `stdin`, kept in memory, and cleared on lock/quit.
+- **A desktop app, not a web dashboard.** Native menus, keyboard shortcuts, resizable windows, and a UI that works offline.
+
+The result is a small, inspectable backup workstation for people who want their archive to outlive a service.
+
+## A quick look
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/m1-dashboard-light.jpg" alt="Dashboard in light mode"><br>
+      <sub><b>Dashboard</b> · light · chain health, latest commit, storage facts</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/m1-dashboard.jpg" alt="Dashboard in dark mode"><br>
+      <sub><b>Dashboard</b> · dark · the same facts, same hierarchy</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/m1-onboarding-light.jpg" alt="Onboarding: create or join a vault"><br>
+      <sub><b>Onboarding</b> · create a new vault or join an existing TargetDir</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/m1-onboarding-params-light.jpg" alt="Backup parameters during onboarding"><br>
+      <sub><b>Parameter studio</b> · normal and advanced settings before the first command</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/assets/m1-settings-schedule-light.jpg" alt="Scheduled backups settings"><br>
+      <sub><b>Scheduled backups</b> · daily, weekly, monthly or fixed interval</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/assets/m1-backup.jpg" alt="Backup progress and logs"><br>
+      <sub><b>Backup</b> · dry runs, live progress, logs and lock recovery</sub>
+    </td>
+  </tr>
+</table>
+
+More screens: **[unlock](docs/assets/m1-unlock.jpg)** · **[history](docs/assets/m1-history.jpg)** · **[restore](docs/assets/m1-restore.jpg)** · **[verify](docs/assets/m1-verify.jpg)** · **[settings](docs/assets/m1-settings-light.jpg)** · **[advanced parameters](docs/assets/m1-settings-params-light.jpg)**
+
+## What it does
+
+| Area | What you get |
 |---|---|
-| 创建新库 | 选择源目录与空 TargetDir → 设置主密码 → 普通/高级参数 → `init` → `export-key` → 强制保存 Armor Key |
-| 加入已有库 | 选择 TargetDir 与本地源目录 → 粘贴 Armor Key → 普通/高级参数 → `init --join` → `import-key` → 主密码验证 → `doctor --chain` |
-| 解锁 | 以 `log --json` 作为密码探针；密码只保存在内存，锁定/退出即清除 |
-| 概览 | `status --chain` 的健康度、锚点、pack 统计、密文/逻辑体积、最近提交与警告 |
-| 备份 | 源根目录固定；`--dry-run` 预演；实时进度/日志；截断提示与继续备份；`--break-lock` 重试 |
-| 历史 | `log` 提交列表、`show` 变更明细、`ls --at` 文件树与按路径过滤 |
-| 恢复 | 强制 `doctor --chain` 预检 → `restore --list-packs` 检查缺失 → 覆盖策略 → `--dry-run` 或正式恢复；支持跳过缺失 pack / 等待同步 |
-| 校验 | `verify --sample N` / `--deep` 与 `doctor --chain`，展示 PASS/WARN/FAIL、缺失/损坏/抽样失败 |
-| 定时备份 | 每天/每周/每月指定时间，或每 N 分钟/小时/天；计划保存到 profile，应用运行且已解锁时执行，锁定/错过时解锁后补跑 |
-| 设置 | 查看 profile/路径/核心完整性；编辑全部已实现参数（普通/高级）；切换外观（浅色/跟随系统/深色，默认浅色）；重新验证密码后导出 Armor Key；写锁诊断；立即锁定；移除本地配置 |
-| 应用保护 | 单实例文件锁；关闭窗口时若命令仍在运行会阻止退出并确认取消；全命令串行队列 |
-| 桌面体验 | 原生菜单栏（应用/文件/编辑/显示/操作/窗口/帮助）、⌘1–5/⌘⇧B/⌘, 等快捷键、内容化窗口标题、侧边栏顶部锁定按钮与设置 tab |
+| **Vault lifecycle** | Create a new vault or join an existing TargetDir with an Armor Key. Choose storage, compression, scan and integrity parameters before the first command. |
+| **Incremental backups** | Scan → chunk → zstd → encrypt → pack. Dry-run preview, live progress/logs, truncation notice, continue-later and `--break-lock` recovery. |
+| **History & restore** | Commit log, change detail, file tree at a chosen `seq`; restore with a hard `doctor --chain` preflight, missing-pack detection and overwrite policy. |
+| **Integrity** | `verify --sample N` / `--deep`, chain doctor, PASS/WARN/FAIL states, missing/corrupt/sample-failure reporting. |
+| **Parameter studio** | The implemented sidecar parameters in one place: pack/slice/small-file sizes, zstd level, excludes, staging directory, xattr policy, hardlinks and on-change strategy. |
+| **Scheduled backups** | Daily, weekly or monthly at a local time, or every N minutes/hours/days. Plans persist; due runs execute while the app is open and unlocked. |
+| **Native desktop UX** | Native menu bar, `⌘1–5` / `⌘⇧B` / `⌘⇧R` / `⌘,` shortcuts, content-based window titles, sidebar lock, settings tab and a persisted light/system/dark theme. |
+| **App protection** | Single-instance file lock, serial command queue, close guards during a running command, and sidecar SHA-256 verification in release builds. |
 
-界面**不使用任何渐变**，默认浅色，可在设置页切换为跟随系统或固定深色；不包含截图/自动自检等调试功能。
+## Architecture
 
-## 设计语言
+<p align="center">
+  <img src="docs/assets/architecture.png" alt="Encry Immortals architecture: Flutter UI, Go sidecar, control plane and TargetDir" width="100%">
+</p>
 
-- **方向**：把“锚点/封印”作为产品的签名元素——仪表盘健康卡展示由 `status --chain` 数据驱动的 `ChainSeal`，
-  不是装饰性插画。
-- **色彩**：深色为暖墨底 + 黄铜主操作 + 绿色“已验证 + 琥珀警告 + 红色危险；浅色为羊皮纸底 + 更深的黄铜/绿色。
-  颜色均为语义角色，不硬编码系统色；默认浅色，设置页可切换浅色/跟随系统/深色，选择持久化到 `preferences.json`。
-- **对比度**：文字/状态色在背景与卡片表面的 WCAG AA 对比度由 `test/app/theme_contrast_test.dart` 强制校验
-  （小字号要求 ≥ 4.5:1）。
-- **层级**：系统字体负责导航/控件，Menlo 负责路径、hash、seq；桌面最小字号 10pt；控件保持 macOS 的紧凑命中区。
-- **桌面惯例**：原生菜单栏、⌘1–5/⌘⇧B/⌘⇧R/⌘L/⌘, 等快捷键、内容化窗口标题、侧边栏顶部更多菜单；
-  锁定不再放在侧边栏底部。
-- **图标**：黄铜封印压在纸面上的“无穷/备份链”标记，不使用字母、钥匙或渐变。macOS 用 squircle 网格与 16/32 简化版；Windows 用透明背景 + 深色轮廓的 ICO。SVG 源文件与 1024px masters 在 `assets/icon/`，由 `tool/generate_icons.py` 生成平台资源。界面内的 `AppMark` 也使用同一图标（裁掉透明外边距的 256px 版本），侧边栏、onboarding、解锁与启动页不再使用旧盾牌。
+```text
+Flutter screens
+  → AppController / VaultSession
+  → CommandQueue (one sidecar at a time)
+  → eimmortal Go sidecar
+  → TargetDir (ciphertext + metadata)  +  app-private control plane
+```
 
-## 参数模型
+- The UI never edits vault files directly. Every operation goes through the sidecar and its typed JSON response.
+- The sidecar reads `config.toml` (0600 on POSIX); the GUI owns that file and writes only implemented parameters.
+- The control plane (`vault.meta`, `state.db`, `journal`, `config.toml`) lives in the app data directory. The TargetDir contains only encrypted data and metadata.
+- The core is pinned as the `third_party/encry-immortals` submodule at `v0.1.5`.
+- Release trust chain: sign the sidecar → compute SHA-256 → pin it at build time → verify the hash before launch and on every unlock.
 
-创建/加入库的第三步与设置页共用同一个表单（`VaultSettingsForm`），保存时写入 `config.toml` 并更新 `profile.json`。
+## Security model
 
-| 分组 | 参数 | 说明 |
-|---|---|---|
-| 普通 | `storage.session_max_mib` | 单次 backup 的明文上限；超出会截断，剩余留给下次 |
-| 普通 | `codec.zstd_level` | zstd 1..22；1 最快、5 均衡、19 归档 |
-| 普通 | `scan.mode` | `fast`（mtime+size）或 `strict`（全量 hash） |
-| 普通 | `scan.exclude` | 相对源目录的 glob，每行一条；空列表即不排除 |
-| 高级 | `storage.pack_max_bytes` / `slice_plain_bytes` / `small_file_bytes` | 以 MiB 编辑；必须满足 slice/small + 50B ≤ pack，slice ≤ 64 MiB |
-| 高级 | `codec.min_compress_bytes` | 以 KiB 编辑；0..1024 KiB |
-| 高级 | `storage.staging_dir` | 留空使用 `<TargetDir>.tmp`；必须与 TargetDir 同卷 |
-| 高级 | `scan.ignore_xattr` | macOS 建议开启；关闭后 E21 风险提示 |
-| 高级 | `scan.sparse_max_bytes` / `follow_hardlinks` | 稀疏文件上限、硬链接策略 |
-| 高级 | `on_change_during_read.strategy` | retry / skip / fail |
+| Boundary | Rule |
+|---|---|
+| **Master password** | Only through sidecar `stdin`. Never in argv, environment variables, temp files, logs or analytics. Held in memory only; lock/quit clears it. |
+| **Armor Key** | Displayed only when explicitly exported, after password re-verification. It is not written to logs. |
+| **Control plane** | App-private directory, POSIX `0600` files. `config.toml` contains no secrets. |
+| **TargetDir** | Ciphertext and metadata only. Removing the local profile never deletes the TargetDir or its history. |
+| **Sidecar integrity** | Release builds pin the signed sidecar SHA-256 and verify it before execution. Debug builds use the Xcode-injected ad-hoc sidecar. |
+| **Restore gate** | `doctor --chain` is a hard preflight. A failing chain is never silently ignored. |
+| **Scheduled runs** | The scheduler never stores or asks for the password. If the vault is locked at the scheduled time, it waits and catches up after unlock. |
 
-所有参数在写入前做跨字段校验；命令运行中禁用保存；修改结构参数或关闭 `ignore_xattr` 时会二次确认。
+> [!IMPORTANT]
+> The current macOS release is **ad-hoc signed, not notarized**. If Gatekeeper blocks the app after download, right-click → Open, or run `xattr -dr com.apple.quarantine "Encry Immortals.app"`.
 
-参考 Apple Human Interface Guidelines 与 [apple-design skill](https://github.com/dickwu/apple-design-skill)：
-`accessibility`、`layout`、`typography`、`color`、`designing-for-macos`、`sidebars`、`toolbars`、`windows`、
-`settings`、`the-menu-bar`、`keyboards`、`buttons`、`progress-indicators`。
+## Scheduled backups, honestly
 
-## 安全模型
+Encry Immortals runs an **in-app scheduler**:
 
-- 主密码只经 **stdin** 传给 sidecar，不进入 argv/env/临时文件/日志；应用不提供“记住密码”。
-- `init` / `import-key` / `export-key` 被标记为敏感命令；stdout 不进入运行日志。Armor Key 只在内存与剪贴板中出现。
-- 所有 CLI 调用经过全局单飞队列；sidecar 崩溃/取消不会带走 UI。
-- 释放版 sidecar 位于 `Encry Immortals.app/Contents/Resources/bin/eimmortal`，构建期签名并固定 SHA-256；
-  release 忽略 `EIMMORTAL_CORE_PATH`，启动与每次解锁前都会重新校验。
-- `doctor --chain` 是恢复的硬性前置；FAIL 时应用不会自动继续。
-- 本地控制平面（`vault.meta`/`state.db`/journal）在应用数据目录，TargetDir 只存密文；移除配置**不会删除 TargetDir**。
-- macOS 已关闭 App Sandbox（备份工具需要读取用户目录，且要执行 sidecar）；分发应使用 Developer ID + 公证。
-- 首次读取“桌面/文稿”等受保护目录时，macOS 可能要求完全磁盘访问权限。
+- Daily at a chosen `HH:mm`
+- Weekly on a chosen weekday and time
+- Monthly on a chosen day (short months use their last day) and time
+- Every N minutes / hours / days (5 minutes to 30 days)
 
-## 开发
+Plans and their `nextRunAt` / `lastRunAt` / `lastError` are stored in the vault profile.
 
-### 前置
+The app **must be running and unlocked** for a scheduled backup to execute. The master password is never persisted, so the scheduler cannot unlock a vault by itself. If the app is locked at the due time, it catches up once after unlock; if the app is fully quit, it runs on the next launch after unlock if the plan is overdue. This is intentionally an in-app scheduler, not launchd/Task Scheduler.
 
-- Flutter 3.47.5 / Dart 3.13.4
-- Xcode + Command Line Tools（macOS）
-- Go 1.27+（Debug sidecar 自动构建需要）
-- 上游核心仓库以 git submodule 固定在 `third_party/encry-immortals`（tag `v0.1.5`）
+## Download & install
 
-### 运行（开发模式）
+**macOS (Apple Silicon)** — latest release:
+
+- [`Encry-Immortals-v0.2.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.0/Encry-Immortals-v0.2.0-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.2.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.0/Encry-Immortals-v0.2.0-macOS-arm64.zip)
+
+Open the DMG, drag **Encry Immortals** to Applications, and launch it. The build is ad-hoc signed and not notarized.
+
+**Windows** — a PowerShell build script exists at [`tool/build_windows.ps1`](tool/build_windows.ps1), but it is experimental and not part of the current release. GUI-subsystem stdio and Windows control locks still need a real Windows validation pass.
+
+## Build from source
+
+### Prerequisites
+
+- Flutter `3.47.5` / Dart `3.13.4`
+- Xcode + Command Line Tools (macOS)
+- Go `1.27+` (the debug/release sidecar build)
+- Git submodules
+
+### Run
 
 ```bash
-git submodule update --init --recursive
+git clone --recurse-submodules https://github.com/tangthinker/encry-immortals-ui.git
+cd encry-immortals-ui
 flutter --no-version-check pub get
 flutter --no-version-check run -d macos
 ```
 
-Debug 构建的 Xcode phase（`tool/xcode_debug_sidecar.sh`）会从 submodule 构建 sidecar 并放进
-`Contents/Resources/bin/eimmortal`，因此 **不需要手动导出** `EIMMORTAL_CORE_PATH`。如果 Go 不在 PATH，
-可以用 `./tool/build_core.sh` 生成缓存，或显式设置 `EIMMORTAL_CORE_PATH` 指向本地 sidecar。
-`flutter --version` 的 GitHub 版本检查在本机会卡住，统一使用 `--no-version-check`。
+The Xcode **Debug/Profile Sidecar** phase builds the sidecar from the pinned submodule and copies it into the app bundle. No `EIMMORTAL_CORE_PATH` export is needed for a normal `flutter run`.
 
-### 测试
-
-```bash
-flutter --no-version-check analyze
-flutter --no-version-check test                         # 86 个单元/组件测试，不需要 sidecar
-flutter --no-version-check test test/core test/app      # 只跑非集成测试
-
-# 真实链路：创建 → 备份 → 历史 → 恢复 → 校验 → 加入库
-RUN_CORE_INTEGRATION=1 \
-EIMMORTAL_CORE_PATH=/Users/tangthinker/code/go/encry-immortals/bin/eimmortal \
-  flutter --no-version-check test test/integration
-```
-
-不启动 UI 的快速 core 冒烟：
-
-```bash
-dart run tool/vertical_slice.dart /path/to/eimmortal
-```
-
-### 构建 macOS release（带 sidecar）
+### Build a release
 
 ```bash
 ./tool/build_macos.sh
-```
-
-默认使用 `third_party/encry-immortals`；如需临时使用另一个核心 checkout，可设置
-`EIMMORTAL_CORE_REPO=/path/to/encry-immortals`。
-
-脚本会：
-
-1. 从核心仓库构建 `CGO_ENABLED=0` sidecar，记录 `git describe` 版本；
-2. **先 codesign sidecar，再计算 SHA-256**（签名会改写 Mach-O，顺序不能反）；
-3. 用 `--dart-define=EIMMORTAL_CORE_SHA256=...` 构建 Flutter release；
-4. 把已签名 sidecar 放入 `Contents/Resources/bin/eimmortal`，签名整个 app；
-5. 校验 bundle 内 sidecar 哈希与构建期常量一致。
-
-产物：
-
-```text
-build/macos/Build/Products/Release/Encry Immortals.app
-```
-
-验证 bundle：
-
-```bash
 dart run tool/verify_bundle.dart \
   "build/macos/Build/Products/Release/Encry Immortals.app" \
   "$(cat build/core/eimmortal.sha256)"
 # integrity: verified
 ```
 
-当前默认使用 **ad-hoc 签名**，仅用于本机验证；正式分发需要 Developer ID、hardened runtime 与 notarization。
-可设置 `CODESIGN_IDENTITY="Developer ID Application: …"` 让脚本使用带 runtime/timestamp 的正式签名。
+The release script signs the sidecar before hashing, copies it into `Contents/Resources/bin/eimmortal`, signs the app and verifies the bundled hash.
 
-### 构建 Windows（未实测）
-
-```powershell
-.\tool\build_windows.ps1 -CoreRepo C:\path\to\encry-immortals
-```
-
-脚本构建 `eimmortal.exe` 与 GUI 子系统 `eimmortal-gui.exe`，复制到 Flutter release 的 `bin\` 并写入 `core-build.txt`。
-发布前需 Authenticode 签名，并验证 Windows 上 GUI 子系统 sidecar 的 stdio 与锁行为。
-
-## 目录结构
-
-```text
-assets/icon/                ICON 设计源文件（SVG + 1024 PNG masters）
-lib/
-  app/
-    app_controller.dart     启动/单实例/核心校验/profile/解锁状态机
-    screens/                onboarding、解锁、主壳层与六个功能页
-    widgets/                卡片、状态、日志、文件树、ChainSeal、VaultSettingsForm
-  core/
-    core_gateway.dart       sidecar 进程 IO、JSON、退出码、取消
-    core_models.dart        CLI JSON 模型
-    command_queue.dart      全局单飞队列
-    app_paths.dart          macOS/Windows 应用数据目录
-    profile*.dart           单 profile 持久化（0600），内嵌 VaultSettings
-    vault_settings.dart     全部已实现 CLI 参数的模型/校验/序列化
-    onboarding_service.dart 创建/加入库
-    vault_session.dart      已解锁会话上的真实命令
-    lock_inspector.dart     TargetDir/控制面写锁诊断
-    progress.dart           stderr 进度解析（只用于显示）
-    vertical_slice.dart     开发期真实链路冒烟
-tool/
-  build_core.sh             sidecar 构建 + 哈希
-  build_macos.sh            release app + 签名 + 校验
-  build_windows.ps1         Windows 构建（未实测）
-  xcode_debug_sidecar.sh    Debug 构建自动注入 sidecar
-  generate_icons.py         从 masters 生成 macOS 图标与 Windows ICO
-  render_icon_svgs.py       从 SVG 重渲染 1024 PNG masters（需要 Chrome）
-  verify_bundle.dart        bundle 路径/哈希/版本验证
-  vertical_slice.dart       终端版冒烟
-```
-
-## 发布
-
-推送 `v*` tag 会触发 [`.github/workflows/release.yml`](.github/workflows/release.yml)：
+### Test
 
 ```bash
-git tag -a v0.2.0 -m "Encry Immortals 0.2.0"
-git push origin main
-git push origin v0.2.0
+flutter --no-version-check analyze
+flutter --no-version-check test                     # 86 unit/widget tests, 3 integration skipped
+RUN_CORE_INTEGRATION=1 \
+EIMMORTAL_CORE_PATH=/path/to/eimmortal \
+  flutter --no-version-check test test/integration
 ```
 
-工作流在 `macos-15` 上安装 Flutter `3.47.5` 与 Go `1.27.1`，执行 analyze/test，构建并校验
-sidecar bundle，上传 `.zip` 与 `.dmg`，最后创建 GitHub Release。macOS 产物是当前 runner
-架构（Apple Silicon 或 Intel，见文件名），使用 ad-hoc 签名，未公证。
+## Release automation
 
-Windows 的打包脚本仍在仓库中，但尚未在 Windows 宿主/CI 实测，因此当前 release workflow
-只发布 macOS 产物。
+Pushing a `v*` tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml):
 
-## 已知限制
+1. Check out the repo and the pinned core submodule.
+2. Install Flutter `3.47.5` and Go `1.27.1`.
+3. Run `flutter analyze` and the test suite.
+4. Build the sidecar, sign it, pin its hash and build the macOS app.
+5. Verify the bundle and package `.zip` + `.dmg`.
+6. Publish a GitHub Release.
 
-- 单 profile；不做定时/无人值守备份、自动更新、多 vault、文件预览、`compact`/`gc` 图形化。
-- 应用使用自己的控制平面（`~/Library/Application Support/EncryImmortals/vault`），不是 CLI 的 `~/.eimmortal`。
-  不要用 CLI/GUI 或其他客户端同时操作同一个 TargetDir；控制锁与锚点状态可能分叉。
-- Windows 构建与 GUI 子系统 stdio 未实测；Windows 控制锁仍需上游 `LockFileEx` 改造（见技术选型 P0）。
-- macOS release 仅 ad-hoc 签名；未公证，未做 Apple Silicon + Intel universal 单包。
-- 空闲自动锁定未实现（仅手动锁定/退出清除密码）；大快照的 `ls` 仍一次加载完整文件树。
-- 定时备份是应用内调度器，不是 launchd/Windows 任务计划：应用退出时不会后台运行；主密码不落盘，锁定时无法自动解锁。
-- 设置是主窗口内的功能页（通过应用菜单 ⌘, 或侧边栏更多菜单进入），不是独立的 macOS 设置窗口；侧边栏暂不支持手动隐藏。
-- 设置页可编辑全部**当前版本实际生效**的 CLI 参数；`concurrency.hashers`、`checkpoint.*`、`verify.auto_strict_every` 等上游尚未实现的字段不暴露。
-- `TargetDir`、应用控制平面目录与源根目录在创建后固定；结构性参数（pack/slice/small_file）变更只影响后续提交，已有快照仍可读。
-- 暂存目录要求与 TargetDir 同卷；UI 只做路径/绝对路径校验，实际同卷检查由 sidecar 在命令启动时完成。
-- 菜单中的“备份/校验/恢复”是导航命令，具体参数仍需在对应页面确认后执行。
-- 已做启动/备份后的 TargetDir 写锁检测与横幅提示，但尚未持久化“上次中断”的操作状态，也不会自动重试。
-- 未单独提供 Increase Contrast 色板变体；基线对比度已满足 WCAG AA，系统原生控件会跟随系统增强。
+The release workflow currently publishes macOS builds only. Windows is deliberately excluded until it has a validated build/signing path.
 
-## 文档
+## Project layout
 
-- [技术选型](docs/tech-selection.md) — Flutter + sidecar 的取舍、架构、打包、风险与待确认项。
-- [客户端 ↔ 核心 CLI 集成契约](docs/integration-contract.md) — 逐命令能力矩阵、密码/stdin、退出码、JSON、锁/取消、契约测试清单。
-- [开发日志](docs/devlog.md) — 每个里程碑的目标、操作、结果、决策与风险。
+```text
+lib/
+  app/                         screens, widgets, theme, controller
+  core/                        sidecar gateway, models, queue, profile, settings
+assets/icon/                   icon SVG sources + 1024px masters
+tool/                          core/app builds, bundle verification, icon tooling
+macos/ · windows/              native runners and assets
+docs/                          architecture notes, contract, devlog, screenshots
+third_party/encry-immortals/   pinned Go core submodule (v0.1.5)
+```
 
-## 核心仓库
+Deeper reading:
 
-- <https://github.com/tangthinker/encry-immortals>
-- 当前核心最新 tag：`v0.1.5`；发布时应固定到 tag/commit，并重跑集成契约测试。
+- [Technical selection](docs/tech-selection.md)
+- [Client ↔ sidecar contract](docs/integration-contract.md)
+- [Development log](docs/devlog.md)
+- [Icon design notes](assets/icon/README.md)
+- [Changelog](CHANGELOG.md)
+
+## Design notes
+
+The icon is a brass wax seal pressed onto a paper inlay. The infinity mark stands for permanence and the backup chain; the scalloped edge, paper grain and letterpress shadow are all vector geometry. There are no gradients, glow effects, letters or literal keys.
+
+The app follows the same restraint: flat ink/brass/paper surfaces, system typography, Menlo for paths and hashes, and a light theme by default. A **Reduce Motion** preference is respected by the screen transition, and the palette passes WCAG AA contrast tests in both appearances.
+
+<p align="center">
+  <img src="docs/assets/app-icon-preview.jpg" alt="App icon across macOS and Windows surfaces" width="720">
+</p>
+
+## Roadmap / known limitations
+
+- [ ] Validate Windows packaging, GUI-subsystem stdio, `LockFileEx` control locks and Authenticode signing.
+- [ ] Developer ID notarization + stapling; universal Apple Silicon / Intel release.
+- [ ] Optional OS-level scheduling (launchd / Task Scheduler) with an explicit Keychain opt-in, so a backup can run while the app is closed.
+- [ ] Idle auto-lock and startup recovery for interrupted operations.
+- [ ] Multi-vault support and paginated snapshot browsing.
+- [x] In-app daily / weekly / monthly / interval scheduling.
+- [x] Full parameter studio, light/dark/system themes, native menu bar and the new seal icon.
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR:
+
+1. Run `flutter --no-version-check analyze` and `flutter --no-version-check test`.
+2. Keep the client ↔ sidecar contract intact; see [docs/integration-contract.md](docs/integration-contract.md).
+3. Never commit passwords, Armor Keys, decrypted fixtures or machine-specific absolute paths.
+4. Add a devlog entry for behavior changes that affect the app or packaging.
+
+## License
+
+No license has been declared yet. Until a license is added, the source is all rights reserved; please open an issue before redistribution or reuse.
+
+## Acknowledgements
+
+Built on top of [encry-immortals](https://github.com/tangthinker/encry-immortals), Flutter, Go, and the Apple Human Interface Guidelines. The seal, gradient-free palette and icon were designed for this project rather than sourced from a template.
