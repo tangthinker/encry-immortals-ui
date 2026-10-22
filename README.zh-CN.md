@@ -23,8 +23,8 @@
 </p>
 
 > [!NOTE]
-> **状态：MVP，持续开发中。** 最新 release `v0.2.1` 提供 **macOS universal 构建**（`x86_64 + arm64`）
-> 和 **Windows x64 安装包 + portable zip**。macOS 使用 ad-hoc 签名，未公证；
+> **状态：MVP，持续开发中。** 最新 release `v0.2.2` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
+> 独立的 **Apple Silicon arm64 构建**，以及 **Windows x64 安装包 + portable zip**。macOS 使用 ad-hoc 签名，未公证；
 > Windows 已由 CI 构建，但仍需在真实 Windows 宿主机验证并接入 Authenticode。
 
 ---
@@ -145,15 +145,20 @@ Encry Immortals 使用**应用内调度器**：
 
 **macOS universal**（`x86_64 + arm64`）：
 
-- [`Encry-Immortals-v0.2.1-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-v0.2.1-macOS-universal.dmg)
-- [`Encry-Immortals-v0.2.1-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-v0.2.1-macOS-universal.zip)
+- [`Encry-Immortals-v0.2.2-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-universal.dmg)
+- [`Encry-Immortals-v0.2.2-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-universal.zip)
 
-打开 DMG，把 **Encry Immortals** 拖入“应用程序”。这是 ad-hoc 签名、未公证的构建。
+**macOS arm64**（Apple Silicon 专用）：
+
+- [`Encry-Immortals-v0.2.2-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.2.2-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-arm64.zip)
+
+打开任一 DMG，把 **Encry Immortals** 拖入“应用程序”。两个构建都是 ad-hoc 签名、未公证。
 
 **Windows x64**：
 
-- [`Encry-Immortals-0.2.1-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-0.2.1-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
-- [`Encry-Immortals-0.2.1-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.1/Encry-Immortals-0.2.1-Windows-x64-portable.zip) — 免安装版本
+- [`Encry-Immortals-0.2.2-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-0.2.2-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
+- [`Encry-Immortals-0.2.2-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-0.2.2-Windows-x64-portable.zip) — 免安装版本
 
 Windows 产物目前**未签名**；Authenticode 与 Windows 实机验证仍在路线图中。
 
@@ -207,9 +212,9 @@ EIMMORTAL_CORE_PATH=/path/to/eimmortal \
 2. 安装 Flutter `3.47.5` 与 Go `1.27.1`。
 3. 执行 `flutter analyze` 和测试。
 4. 构建 universal sidecar、签名、固定 hash、构建 macOS app。
-5. 校验 bundle 与双架构，打包 `.zip` + `.dmg`。
+5. 校验并打包 universal 和 arm64 两套 `.zip` + `.dmg`。
 6. 构建 Windows x64、校验 sidecar hash、生成 Inno Setup 安装包和 portable zip。
-7. 把所有平台产物发布到 GitHub Release。
+7. 把 universal、arm64 和 Windows 产物发布到 GitHub Release。
 
 Windows 产物由 CI 构建，但在接入 Authenticode 前仍未签名。
 
@@ -232,6 +237,7 @@ third_party/encry-immortals/   固定 Go 核心 submodule（v0.1.5）
 - [客户端 ↔ sidecar 契约](docs/integration-contract.md)
 - [开发日志](docs/devlog.md)
 - [图标设计说明](assets/icon/README.md)
+- [macOS 签名与公证](docs/macos-signing.md)
 - [Changelog](CHANGELOG.md)
 
 ## 设计

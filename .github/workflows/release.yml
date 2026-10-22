@@ -17,6 +17,9 @@ jobs:
     name: Build macOS universal
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      # 配了 Developer ID 证书 secret 才走签名+公证；否则保持原来的 ad-hoc 流程。
+      MACOS_SIGNING_ENABLED: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +56,24 @@ jobs:
       - name: Unit and widget tests
         run: flutter --no-version-check test
 
+      - name: Import Developer ID certificate
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: ./tool/ci_import_signing_cert.sh
+
+      - name: Write notarization API key
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKey.p8"
+          echo "NOTARY_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
       - name: Build signed universal app
         run: |
           set +e
@@ -84,6 +105,13 @@ jobs:
             exit 1
           }
 
+      - name: Notarize app and staple
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: ./tool/notarize_macos.sh "build/macos/Build/Products/Release/Encry Immortals.app"
+
       - name: Package zip and dmg
         run: |
           set -euo pipefail
@@ -93,7 +121,8 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP" "${BASE}.zip"
 
           mkdir -p build/dmg
-          cp -R "$APP" build/dmg/
+          # 用 ditto 而不是 cp：公证票据是 bundle 里的文件/扩展属性，cp 可能丢。
+          ditto "$APP" "build/dmg/$(basename "$APP")"
           ln -s /Applications build/dmg/Applications
           hdiutil create \
             -volname "Encry Immortals" \
@@ -101,7 +130,21 @@ jobs:
             -ov -format UDZO \
             "${BASE}.dmg"
 
+          if [[ -n "${CODESIGN_IDENTITY:-}" && "${CODESIGN_IDENTITY}" != "-" ]]; then
+            codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "${BASE}.dmg"
+          fi
+
           ls -lh "${BASE}.zip" "${BASE}.dmg"
+
+      - name: Notarize dmg and staple
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          DMG="$(ls Encry-Immortals-*-macOS-universal.dmg)"
+          ./tool/notarize_macos.sh "$DMG"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -118,6 +161,9 @@ jobs:
     name: Build macOS arm64
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      # 配了 Developer ID 证书 secret 才走签名+公证；否则保持原来的 ad-hoc 流程。
+      MACOS_SIGNING_ENABLED: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -140,6 +186,24 @@ jobs:
 
       - name: Install dependencies
         run: flutter --no-version-check pub get
+
+      - name: Import Developer ID certificate
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: ./tool/ci_import_signing_cert.sh
+
+      - name: Write notarization API key
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKey.p8"
+          echo "NOTARY_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
 
       - name: Build signed arm64 app
         env:
@@ -174,6 +238,13 @@ jobs:
             exit 1
           }
 
+      - name: Notarize app and staple
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: ./tool/notarize_macos.sh "build/macos/Build/Products/Release/Encry Immortals.app"
+
       - name: Package arm64 zip and dmg
         run: |
           set -euo pipefail
@@ -183,11 +254,26 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP" "${BASE}.zip"
 
           mkdir -p build/dmg
-          cp -R "$APP" build/dmg/
+          # 用 ditto 而不是 cp：公证票据是 bundle 里的文件/扩展属性，cp 可能丢。
+          ditto "$APP" "build/dmg/$(basename "$APP")"
           ln -s /Applications build/dmg/Applications
           hdiutil create             -volname "Encry Immortals"             -srcfolder build/dmg             -ov -format UDZO             "${BASE}.dmg"
 
+          if [[ -n "${CODESIGN_IDENTITY:-}" && "${CODESIGN_IDENTITY}" != "-" ]]; then
+            codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "${BASE}.dmg"
+          fi
+
           ls -lh "${BASE}.zip" "${BASE}.dmg"
+
+      - name: Notarize dmg and staple
+        if: env.MACOS_SIGNING_ENABLED == 'true'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          DMG="$(ls Encry-Immortals-*-macOS-arm64.dmg)"
+          ./tool/notarize_macos.sh "$DMG"
 
       - name: Upload arm64 artifacts
         uses: actions/upload-artifact@v4
@@ -299,6 +385,8 @@ jobs:
     name: Publish GitHub Release
     needs: [macos, macos-arm64, windows]
     runs-on: ubuntu-latest
+    env:
+      MACOS_SIGNING_ENABLED: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
     permissions:
       contents: write
     steps:
@@ -332,8 +420,7 @@ jobs:
             - Universal app: Apple Silicon + Intel (`x86_64 arm64`).
             - Dedicated Apple Silicon build (`arm64`), kept for users who prefer the architecture-specific package.
             - Universal and arm64 sidecars are signed and hash-pinned at build time.
-            - Ad-hoc signed, **not notarized**. If Gatekeeper blocks the app, right-click → Open, or run:
-              `xattr -dr com.apple.quarantine "Encry Immortals.app"`.
+            ${{ env.MACOS_SIGNING_ENABLED == 'true' && '- Developer ID signed with hardened runtime, notarized by Apple, and stapled — Gatekeeper opens it without a workaround.' || '- Ad-hoc signed, **not notarized**. If Gatekeeper blocks the app, right-click → Open, or run: `xattr -dr com.apple.quarantine "Encry Immortals.app"`.' }}
 
             ### Windows
 

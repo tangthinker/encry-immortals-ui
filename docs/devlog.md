@@ -5,6 +5,48 @@
 
 ---
 
+## 2026-10-23 00:50 · v0.2.2：恢复独立 macOS arm64 资产
+
+### 背景
+
+v0.2.1 只发布了 macOS universal，原来的 `macOS-arm64` 资产消失。两者都保留：
+
+- universal：兼容 Apple Silicon + Intel；
+- arm64：Apple Silicon 专用，主可执行文件和 sidecar 都是 arm64。
+
+### 构建
+
+- `tool/build_macos.sh` 支持 `TARGET_ARCH=universal|arm64`，按目标检查必需架构。
+- `build_core.sh` 在覆盖已有 sidecar 前先删除旧产物，避免 Go 对 fat binary 报
+  `already exists and is not an object file`。
+- arm64 构建：
+  - 编译 arm64 sidecar；
+  - 用 arm64 sidecar SHA-256 重新构建 Flutter app；
+  - 将主可执行文件 `lipo -thin arm64`，重新签名；
+  - sidecar 保持 arm64，App.framework 保留 universal 不影响启动。
+  - 构建前删除旧 `.app`，避免同一工作区先构建 arm64 后 Xcode 复用单架构主程序。
+- release workflow 新增独立 `macos-arm64` job，与 universal、Windows 并行；release job 同时等待三个平台。
+
+### 发布结果
+
+- tag `v0.2.2`，commit `f71404f`
+- [GitHub Release](https://github.com/tangthinker/encry-immortals-ui/releases/tag/v0.2.2)：
+  - `Encry-Immortals-v0.2.2-macOS-universal.dmg`（约 29.2 MB）
+  - `Encry-Immortals-v0.2.2-macOS-universal.zip`（约 25.8 MB）
+  - `Encry-Immortals-v0.2.2-macOS-arm64.dmg`（约 24.8 MB）
+  - `Encry-Immortals-v0.2.2-macOS-arm64.zip`（约 21.8 MB）
+  - `Encry-Immortals-0.2.2-Windows-x64.exe`（约 16.4 MB）
+  - `Encry-Immortals-0.2.2-Windows-x64-portable.zip`（约 20 MB）
+
+### 验证
+
+- 下载 arm64 zip 后检查：主程序 `arm64`、sidecar `arm64`、`CFBundleShortVersionString=0.2.2`。
+- `codesign --verify --deep --strict` 通过。
+- `core-build.txt` 与 sidecar SHA-256 一致。
+- universal job 仍验证 `x86_64 + arm64`，Windows job 仍验证 sidecar hash 与安装包生成。
+
+---
+
 ## 2026-10-22 23:55 · v0.2.1：macOS universal + Windows 安装包
 
 ### 目标
