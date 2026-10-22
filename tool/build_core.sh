@@ -29,6 +29,7 @@ BIN="$OUT_DIR/eimmortal"
 build_one() {
   local goarch="$1"
   local output="$2"
+  rm -f "$output"
   (
     cd "$CORE_REPO"
     CGO_ENABLED=0 GOOS="$TARGET_OS" GOARCH="$goarch" \

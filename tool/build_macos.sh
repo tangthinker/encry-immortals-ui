@@ -8,13 +8,32 @@ IDENTITY="${CODESIGN_IDENTITY:--}"
 # A release must run on both Apple Silicon and Intel. The Flutter app is
 # already universal; the Go sidecar must be merged explicitly.
 export TARGET_ARCH="${TARGET_ARCH:-universal}"
+case "$TARGET_ARCH" in
+  universal) REQUIRED_ARCHS="arm64 x86_64" ;;
+  arm64|aarch64) REQUIRED_ARCHS="arm64" ;;
+  x86_64|amd64) REQUIRED_ARCHS="x86_64" ;;
+  *)
+    echo "不支持的 TARGET_ARCH：$TARGET_ARCH（支持 universal/arm64/x86_64）" >&2
+    exit 2
+    ;;
+esac
+
+require_archs() {
+  local path="$1" label="$2"
+  shift 2
+  local archs required
+  archs="$(lipo -archs "$path")"
+  echo "${label} archs: ${archs}" >&2
+  for required in "$@"; do
+    if [[ " $archs " != *" $required "* ]]; then
+      echo "::error::${label} is missing ${required} (archs: ${archs})" >&2
+      return 1
+    fi
+  done
+}
+
 eval "$("$ROOT/tool/build_core.sh")"
-SIDECAR_ARCHS="$(lipo -archs "$CORE_BIN")"
-echo "sidecar archs: ${SIDECAR_ARCHS}" >&2
-if [[ " $SIDECAR_ARCHS " != *" arm64 "* || " $SIDECAR_ARCHS " != *" x86_64 "* ]]; then
-  echo "::error::universal sidecar is missing an architecture (archs: ${SIDECAR_ARCHS})" >&2
-  exit 1
-fi
+require_archs "$CORE_BIN" "sidecar" $REQUIRED_ARCHS
 
 sign_code() {
   if [[ "$IDENTITY" == "-" ]]; then
@@ -31,7 +50,7 @@ printf '%s\n' "$CORE_HASH" > "$ROOT/build/core/eimmortal.sha256"
 echo "已签名 sidecar，最终 sha256=${CORE_HASH}" >&2
 
 APP="$ROOT/build/macos/Build/Products/Release/Encry Immortals.app"
-echo "构建 Flutter release（universal，core sha256=${CORE_HASH}）…" >&2
+echo "构建 Flutter release（target=${TARGET_ARCH}，core sha256=${CORE_HASH}）…" >&2
 (
   cd "$ROOT"
   flutter --no-version-check build macos --release \
@@ -44,24 +63,25 @@ chmod 755 "$APP/Contents/Resources/bin/eimmortal"
 printf '%s\n%s\n' "$CORE_VERSION" "$CORE_HASH" \
   > "$APP/Contents/Resources/core-build.txt"
 
+# arm64 变体把主可执行文件裁成单架构；App.framework 保留 universal 不影响 arm64 启动。
+if [[ "$TARGET_ARCH" == "arm64" ]]; then
+  THIN_MAIN="$APP/Contents/MacOS/Encry Immortals"
+  if lipo -archs "$THIN_MAIN" | grep -qw x86_64; then
+    rm -f "${THIN_MAIN}.arm64"
+    lipo -thin arm64 "$THIN_MAIN" -output "${THIN_MAIN}.arm64"
+    mv "${THIN_MAIN}.arm64" "$THIN_MAIN"
+    echo "arm64 app executable thinned to: $(lipo -archs "$THIN_MAIN")" >&2
+  fi
+fi
+
 # sidecar 在复制前已经签好；复制不会改变哈希。再签整个 app。
 sign_code "$APP"
 codesign --verify --deep --strict "$APP"
 MAIN_BIN="$APP/Contents/MacOS/Encry Immortals"
 APP_BIN="$APP/Contents/Frameworks/App.framework/Versions/A/App"
-APP_ARCHS="$(lipo -archs "$MAIN_BIN")"
-echo "app executable archs: ${APP_ARCHS}" >&2
-if [[ " $APP_ARCHS " != *" arm64 "* || " $APP_ARCHS " != *" x86_64 "* ]]; then
-  echo "::error::app executable is missing an architecture (archs: ${APP_ARCHS})" >&2
-  exit 1
-fi
+require_archs "$MAIN_BIN" "app executable" $REQUIRED_ARCHS
 if [[ -f "$APP_BIN" ]]; then
-  APP_FRAMEWORK_ARCHS="$(lipo -archs "$APP_BIN")"
-  echo "App.framework archs: ${APP_FRAMEWORK_ARCHS}" >&2
-  if [[ " $APP_FRAMEWORK_ARCHS " != *" arm64 "* || " $APP_FRAMEWORK_ARCHS " != *" x86_64 "* ]]; then
-    echo "::error::App.framework is missing an architecture (archs: ${APP_FRAMEWORK_ARCHS})" >&2
-    exit 1
-  fi
+  require_archs "$APP_BIN" "App.framework" $REQUIRED_ARCHS
 fi
 BUNDLED_HASH="$(shasum -a 256 "$APP/Contents/Resources/bin/eimmortal" | awk '{print $1}')"
 if [[ "$BUNDLED_HASH" != "$CORE_HASH" ]]; then
