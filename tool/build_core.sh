@@ -69,8 +69,12 @@ else
     build_one arm64 "$ARM_BIN"
     build_one amd64 "$AMD_BIN"
     lipo -create -output "$BIN" "$ARM_BIN" "$AMD_BIN"
-    lipo -verify_arch arm64 "$BIN"
-    lipo -verify_arch x86_64 "$BIN"
+    ARCHS="$(lipo -archs "$BIN")"
+    echo "universal sidecar archs: ${ARCHS}" >&2
+    if [[ " $ARCHS " != *" arm64 "* || " $ARCHS " != *" x86_64 "* ]]; then
+      echo "::error::universal sidecar is missing an architecture (archs: ${ARCHS})" >&2
+      exit 1
+    fi
     rm -f "$ARM_BIN" "$AMD_BIN"
     chmod 755 "$BIN"
   else

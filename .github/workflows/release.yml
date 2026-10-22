@@ -71,10 +71,18 @@ jobs:
           set -euo pipefail
           APP="build/macos/Build/Products/Release/Encry Immortals.app"
           dart run tool/verify_bundle.dart "$APP" "$(cat build/core/eimmortal.sha256)"
-          lipo -verify_arch arm64 "$APP/Contents/Resources/bin/eimmortal"
-          lipo -verify_arch x86_64 "$APP/Contents/Resources/bin/eimmortal"
-          lipo -verify_arch arm64 "$APP/Contents/MacOS/Encry Immortals"
-          lipo -verify_arch x86_64 "$APP/Contents/MacOS/Encry Immortals"
+          SIDECAR_ARCHS="$(lipo -archs "$APP/Contents/Resources/bin/eimmortal")"
+          APP_ARCHS="$(lipo -archs "$APP/Contents/MacOS/Encry Immortals")"
+          echo "sidecar archs: $SIDECAR_ARCHS"
+          echo "app archs: $APP_ARCHS"
+          [[ "$SIDECAR_ARCHS" == *arm64* && "$SIDECAR_ARCHS" == *x86_64* ]] || {
+            echo "::error::sidecar is not universal: $SIDECAR_ARCHS"
+            exit 1
+          }
+          [[ "$APP_ARCHS" == *arm64* && "$APP_ARCHS" == *x86_64* ]] || {
+            echo "::error::app is not universal: $APP_ARCHS"
+            exit 1
+          }
 
       - name: Package zip and dmg
         run: |

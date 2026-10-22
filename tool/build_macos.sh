@@ -9,15 +9,12 @@ IDENTITY="${CODESIGN_IDENTITY:--}"
 # already universal; the Go sidecar must be merged explicitly.
 export TARGET_ARCH="${TARGET_ARCH:-universal}"
 eval "$("$ROOT/tool/build_core.sh")"
-echo "sidecar archs: $(lipo -archs "$CORE_BIN")" >&2
-lipo -verify_arch arm64 "$CORE_BIN" || {
-  echo "::error::universal sidecar is missing arm64 (archs: $(lipo -archs "$CORE_BIN"))" >&2
+SIDECAR_ARCHS="$(lipo -archs "$CORE_BIN")"
+echo "sidecar archs: ${SIDECAR_ARCHS}" >&2
+if [[ " $SIDECAR_ARCHS " != *" arm64 "* || " $SIDECAR_ARCHS " != *" x86_64 "* ]]; then
+  echo "::error::universal sidecar is missing an architecture (archs: ${SIDECAR_ARCHS})" >&2
   exit 1
-}
-lipo -verify_arch x86_64 "$CORE_BIN" || {
-  echo "::error::universal sidecar is missing x86_64 (archs: $(lipo -archs "$CORE_BIN"))" >&2
-  exit 1
-}
+fi
 
 sign_code() {
   if [[ "$IDENTITY" == "-" ]]; then
@@ -52,27 +49,19 @@ sign_code "$APP"
 codesign --verify --deep --strict "$APP"
 MAIN_BIN="$APP/Contents/MacOS/Encry Immortals"
 APP_BIN="$APP/Contents/Frameworks/App.framework/Versions/A/App"
-echo "app executable archs: $(lipo -archs "$MAIN_BIN")" >&2
-if [[ -f "$APP_BIN" ]]; then
-  echo "App.framework archs: $(lipo -archs "$APP_BIN")" >&2
+APP_ARCHS="$(lipo -archs "$MAIN_BIN")"
+echo "app executable archs: ${APP_ARCHS}" >&2
+if [[ " $APP_ARCHS " != *" arm64 "* || " $APP_ARCHS " != *" x86_64 "* ]]; then
+  echo "::error::app executable is missing an architecture (archs: ${APP_ARCHS})" >&2
+  exit 1
 fi
-lipo -verify_arch arm64 "$MAIN_BIN" || {
-  echo "::error::app executable is missing arm64 (archs: $(lipo -archs "$MAIN_BIN"))" >&2
-  exit 1
-}
-lipo -verify_arch x86_64 "$MAIN_BIN" || {
-  echo "::error::app executable is missing x86_64 (archs: $(lipo -archs "$MAIN_BIN"))" >&2
-  exit 1
-}
 if [[ -f "$APP_BIN" ]]; then
-  lipo -verify_arch arm64 "$APP_BIN" || {
-    echo "::error::App.framework is missing arm64 (archs: $(lipo -archs "$APP_BIN"))" >&2
+  APP_FRAMEWORK_ARCHS="$(lipo -archs "$APP_BIN")"
+  echo "App.framework archs: ${APP_FRAMEWORK_ARCHS}" >&2
+  if [[ " $APP_FRAMEWORK_ARCHS " != *" arm64 "* || " $APP_FRAMEWORK_ARCHS " != *" x86_64 "* ]]; then
+    echo "::error::App.framework is missing an architecture (archs: ${APP_FRAMEWORK_ARCHS})" >&2
     exit 1
-  }
-  lipo -verify_arch x86_64 "$APP_BIN" || {
-    echo "::error::App.framework is missing x86_64 (archs: $(lipo -archs "$APP_BIN"))" >&2
-    exit 1
-  }
+  fi
 fi
 BUNDLED_HASH="$(shasum -a 256 "$APP/Contents/Resources/bin/eimmortal" | awk '{print $1}')"
 if [[ "$BUNDLED_HASH" != "$CORE_HASH" ]]; then
