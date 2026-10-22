@@ -13,6 +13,8 @@ macOS:
 Windows:
   ICO 16/24/32/48  -> windows-small (transparent, ink outline)
   ICO 64/128/256   -> windows-master (transparent, full detail)
+
+Also writes assets/icon/app-mark.png (cropped 256px) for the Flutter UI.
 """
 from __future__ import annotations
 
@@ -25,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ICON_DIR = ROOT / "assets" / "icon"
 MACOS_SET = ROOT / "macos/Runner/Assets.xcassets/AppIcon.appiconset"
 WINDOWS_ICO = ROOT / "windows/runner/resources/app_icon.ico"
+APP_MARK = ICON_DIR / "app-mark.png"
 
 
 def load(name: str) -> Image.Image:
@@ -57,6 +60,15 @@ def write_macos(master: Image.Image, small: Image.Image, tiny: Image.Image) -> N
             MACOS_SET / f"app_icon_{size}.png", optimize=True
         )
     print(f"macOS icons: {len(sources)} sizes -> {MACOS_SET}")
+
+
+def write_app_mark(small: Image.Image) -> None:
+    """A tightly cropped mark for the in-app sidebar/onboarding."""
+    # Remove the transparent macOS icon-grid margin so the UI mark matches the
+    # visual size of the old square logo instead of looking 20% smaller.
+    icon = small.crop((100, 100, 924, 924)).resize((256, 256), Image.Resampling.LANCZOS)
+    icon.save(APP_MARK, optimize=True)
+    print(f"in-app mark: 256px -> {APP_MARK}")
 
 
 def write_ico(master: Image.Image, small: Image.Image) -> None:
@@ -106,6 +118,7 @@ def main() -> None:
     win_master = load("windows-master")
     win_small = load("windows-small")
     write_macos(master, small, tiny)
+    write_app_mark(small)
     write_ico(win_master, win_small)
 
     with Image.open(WINDOWS_ICO) as ico:

@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-10-22 22:35 · 界面内统一使用新图标
+
+### 目标
+
+应用图标换成“封印 + 无穷”后，界面里还残留旧盾牌标记（侧边栏、onboarding、解锁、启动页）。
+这一轮把界面内的品牌标记与应用图标统一。
+
+### 操作
+
+- 新增 `assets/icon/app-mark.png`：从 `macos-small` 裁掉 macOS 1024 图标的 100px 透明外边距，
+  缩到 256px。这样在 UI 里显示 36/40px 时视觉尺寸与旧方形 logo 一致，不会突然变小。
+- `AppMark` 从“黄铜圆角底 + `shield_moon` 图标”改为 `Image.asset` 新图标；作为装饰图像加入
+  语义树（紧邻应用名，避免 VoiceOver 重复读应用名）。
+- 侧边栏顶部移除自定义盾牌 Container，统一用 `AppMark(size: 36)`；onboarding/解锁/启动/
+  已运行页面继续用同一个 `AppMark`。
+- `assets/icon/app-mark.png` 声明到 `pubspec.yaml`，由 `tool/generate_icons.py` 自动生成。
+- 重新截图：dashboard、onboarding、onboarding 参数页、解锁、设置、备份、历史、恢复、校验
+  全部换成新标记。
+
+### 未替换的盾牌
+
+onboarding 的“安全提示”里仍保留一个 `Icons.shield_outlined`：它是语义图标，不是品牌标记，
+用来提示安全说明，不应换成应用图标。
+
+### 验证
+
+```text
+flutter analyze                 No issues found
+flutter test                    72 passed, 3 skipped
+flutter build macos --debug     成功
+flutter build macos --release   成功；bundle integrity: verified
+```
+
+新截图：[dashboard](assets/m1-dashboard.jpg)、[dashboard 浅色](assets/m1-dashboard-light.jpg)、
+[onboarding 参数](assets/m1-onboarding-params.jpg)、[解锁](assets/m1-unlock.jpg)。
+
+### 风险
+
+- Windows 任务栏/开始菜单仍建议实机确认；Flutter UI 内的 AppMark 在 Windows 上使用同一 assets PNG。
+- 若 macOS 仍显示旧 Dock 图标，是图标缓存；UI 内的 AppMark 不受影响。
+
+---
+
 ## 2026-10-22 22:30 · 应用图标重做：封印 + 无穷（不再使用字母/钥匙）
 
 ### 目标

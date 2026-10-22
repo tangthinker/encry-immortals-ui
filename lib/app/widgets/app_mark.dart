@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../theme.dart';
-
+/// 应用内统一品牌标记：与 macOS/Windows 应用图标使用同一张封印图。
+///
+/// 图标总是紧邻应用名/说明文字，因此作为装饰图像处理，避免 VoiceOver
+/// 把应用名重复读两遍。
 class AppMark extends StatelessWidget {
   const AppMark({this.size = 40, super.key});
 
@@ -9,18 +11,13 @@ class AppMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Image.asset(
+      'assets/icon/app-mark.png',
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(size * 0.28),
-      ),
-      child: Icon(
-        Icons.shield_moon_outlined,
-        size: size * 0.55,
-        color: AppColors.onAccent,
-      ),
+      filterQuality: FilterQuality.high,
+      fit: BoxFit.contain,
+      excludeFromSemantics: true,
     );
   }
 }

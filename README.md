@@ -52,7 +52,7 @@
 - **层级**：系统字体负责导航/控件，Menlo 负责路径、hash、seq；桌面最小字号 10pt；控件保持 macOS 的紧凑命中区。
 - **桌面惯例**：原生菜单栏、⌘1–5/⌘⇧B/⌘⇧R/⌘L/⌘, 等快捷键、内容化窗口标题、侧边栏顶部更多菜单；
   锁定不再放在侧边栏底部。
-- **图标**：黄铜封印压在纸面上的“无穷/备份链”标记，不使用字母、钥匙或渐变。macOS 用 squircle 网格与 16/32 简化版；Windows 用透明背景 + 深色轮廓的 ICO。SVG 源文件与 1024px masters 在 `assets/icon/`，由 `tool/generate_icons.py` 生成平台资源。
+- **图标**：黄铜封印压在纸面上的“无穷/备份链”标记，不使用字母、钥匙或渐变。macOS 用 squircle 网格与 16/32 简化版；Windows 用透明背景 + 深色轮廓的 ICO。SVG 源文件与 1024px masters 在 `assets/icon/`，由 `tool/generate_icons.py` 生成平台资源。界面内的 `AppMark` 也使用同一图标（裁掉透明外边距的 256px 版本），侧边栏、onboarding、解锁与启动页不再使用旧盾牌。
 
 ## 参数模型
 

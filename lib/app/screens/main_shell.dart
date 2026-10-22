@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../app_controller.dart';
 import '../app_info.dart';
 import '../theme.dart';
+import '../widgets/app_mark.dart';
 import '../window_title.dart';
 import 'backup_page.dart';
 import 'dashboard_page.dart';
@@ -478,19 +479,7 @@ class _Sidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
             child: Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child:  Icon(
-                    Icons.shield_moon_outlined,
-                    size: 19,
-                    color: AppColors.onAccent,
-                  ),
-                ),
+                const AppMark(size: 36),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(

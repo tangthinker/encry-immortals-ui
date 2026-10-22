@@ -13,12 +13,16 @@ No gradients, no glow, no text; three flat colors plus paper/ink tones.
 | `macos-tiny.svg/png` | macOS 16; solid seal, high-contrast infinity |
 | `windows-master.svg/png` | Windows 64–256; transparent, smooth ink outline |
 | `windows-small.svg/png` | Windows 16–48; transparent, thicker gold ring and infinity |
+| `app-mark.png` | 256px cropped macOS tile used by the in-app `AppMark` (sidebar/onboarding) |
 
 The macOS artwork uses a squircle (superellipse) on the standard 824×824
 icon grid. Windows artwork is transparent with a dark silhouette so it holds
 up on both light and dark taskbars.
 
 ## Regenerate
+
+`app-mark.png` is generated automatically from `macos-small` by
+`tool/generate_icons.py`; do not edit it by hand.
 
 The checked-in 1024px PNGs are the source of truth for asset generation:
 
