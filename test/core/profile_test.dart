@@ -1,3 +1,4 @@
+import 'package:encry_immortals_ui/core/backup_schedule.dart';
 import 'package:encry_immortals_ui/core/profile.dart';
 import 'package:encry_immortals_ui/core/vault_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +76,22 @@ void main() {
     expect(decoded.settings, updated.settings);
     expect(decoded.settings.packMaxMiB, 256);
     expect(decoded.ignoreXattr, isFalse);
+  });
+
+  test('定时备份计划随 profile 往返', () {
+    final profile = _profile();
+    final updated = profile.copyWith(
+      schedule: const BackupSchedule(
+        mode: BackupScheduleMode.monthly,
+        dayOfMonth: 15,
+        hour: 3,
+        minute: 20,
+      ),
+    );
+    final decoded = Profile.fromJson(updated.toJson());
+    expect(decoded.schedule.mode, BackupScheduleMode.monthly);
+    expect(decoded.schedule.dayOfMonth, 15);
+    expect(decoded.schedule.description, '每月 15 日 03:20');
   });
 
   test('旧版扁平 profile 自动迁移到 settings', () {

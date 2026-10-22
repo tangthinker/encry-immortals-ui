@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/app_paths.dart';
 import '../core/app_preferences.dart';
+import '../core/backup_schedule.dart';
 import '../core/command_queue.dart';
 import '../core/core_exit_code.dart';
 import '../core/core_models.dart';
@@ -74,6 +75,10 @@ class AppController extends ChangeNotifier {
   int _refreshRevision = 0;
   InstanceLock? _instanceLock;
   AppThemeMode _themeMode = AppThemeMode.light;
+  Timer? _scheduleTimer;
+  bool _scheduledBackupRunning = false;
+  int _scheduledBackupRevision = 0;
+  String? _lastScheduledBackupMessage;
 
   AppPhase get phase => _phase;
   CoreRuntime? get runtime => _runtime;
@@ -88,6 +93,12 @@ class AppController extends ChangeNotifier {
   int get dataRevision => _dataRevision;
   int get refreshRevision => _refreshRevision;
   AppThemeMode get themeMode => _themeMode;
+  BackupSchedule get backupSchedule =>
+      _profile?.schedule ?? const BackupSchedule();
+  DateTime? get nextScheduledBackup => backupSchedule.nextRunAt;
+  bool get scheduledBackupRunning => _scheduledBackupRunning;
+  int get scheduledBackupRevision => _scheduledBackupRevision;
+  String? get lastScheduledBackupMessage => _lastScheduledBackupMessage;
   bool get isBusy => queue.isBusy;
   bool get hasInstanceLock => _instanceLock != null;
 
@@ -112,7 +123,25 @@ class AppController extends ChangeNotifier {
       }
 
       _runtime = await (_runtimeLoader ?? _loadRuntime)();
-      final loaded = await profileStore.load();
+      var loaded = await profileStore.load();
+      if (loaded != null &&
+          loaded.schedule.isEnabled &&
+          loaded.schedule.nextRunAt == null) {
+        final next = loaded.schedule.nextAfter(DateTime.now());
+        if (next != null) {
+          loaded = loaded.copyWith(
+            schedule: loaded.schedule.copyWith(
+              nextRunAt: next,
+              clearLastError: true,
+            ),
+          );
+          try {
+            await profileStore.save(loaded);
+          } catch (_) {
+            // 定时计划不应阻塞启动；内存中的 nextRunAt 仍可使用。
+          }
+        }
+      }
       _profile = loaded;
       if (loaded == null) {
         _session = null;
@@ -135,6 +164,7 @@ class AppController extends ChangeNotifier {
       _startupError = _friendlyError(error);
       _phase = AppPhase.failed;
     }
+    _restartScheduleTimer();
     _notify();
   }
 
@@ -280,6 +310,8 @@ class AppController extends ChangeNotifier {
         _phase = AppPhase.unlocked;
         _unlockError = null;
         _unlockExit = null;
+        _restartScheduleTimer();
+        unawaited(_checkScheduledBackup());
       } else {
         _unlockError = _resultMessage(result);
         _unlockExit = result.exit;
@@ -379,6 +411,125 @@ class AppController extends ChangeNotifier {
     _notify();
   }
 
+  Future<void> updateBackupSchedule(BackupSchedule schedule) async {
+    if (_scheduledBackupRunning) {
+      throw StateError('定时备份正在运行，结束后再修改计划。');
+    }
+    final current = _profile;
+    if (current == null) throw StateError('没有活动 profile。');
+    final error = schedule.validate();
+    if (error != null) throw ArgumentError(error);
+    final next = schedule.isEnabled ? schedule.nextAfter(DateTime.now()) : null;
+    final normalized = schedule.copyWith(
+      nextRunAt: next,
+      clearNextRunAt: next == null,
+      clearLastError: true,
+    );
+    final updated = current.copyWith(schedule: normalized);
+    await profileStore.save(updated);
+    _profile = updated;
+    _session?.updateProfile(updated);
+    _restartScheduleTimer();
+    _notify();
+    unawaited(_checkScheduledBackup());
+  }
+
+  void _restartScheduleTimer() {
+    _scheduleTimer?.cancel();
+    _scheduleTimer = null;
+    if (_profile?.schedule.isEnabled != true) return;
+    _scheduleTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(_checkScheduledBackup());
+    });
+  }
+
+  Future<void> _checkScheduledBackup() async {
+    if (_disposed || _scheduledBackupRunning) return;
+    final current = _profile;
+    final session = _session;
+    if (current == null || session == null || _phase != AppPhase.unlocked) {
+      return;
+    }
+    final schedule = current.schedule;
+    final next = schedule.nextRunAt;
+    if (!schedule.isEnabled ||
+        next == null ||
+        next.toLocal().isAfter(DateTime.now()) ||
+        queue.isBusy) {
+      return;
+    }
+
+    _scheduledBackupRunning = true;
+    _notify();
+    var message = '';
+    try {
+      final result = await session.backup(message: '定时备份');
+      if (_disposed) return;
+      final completed = DateTime.now();
+      final nextAt = schedule.nextAfter(completed);
+      if (result.isSuccess) {
+        await _loadPreviewStatus();
+        await refreshTargetLock();
+        _dataRevision++;
+        final summary = result.jsonMap == null
+            ? null
+            : BackupSummary.fromJson(result.jsonMap!);
+        message = summary == null ? '定时备份完成' : '定时备份完成 · seq ${summary.seq}';
+        await _persistSchedule(
+          schedule.copyWith(
+            lastRunAt: completed,
+            nextRunAt: nextAt,
+            clearLastError: true,
+          ),
+        );
+      } else {
+        final error = _resultMessage(result);
+        message = '定时备份失败 · ${result.exit.label}';
+        await _persistSchedule(
+          schedule.copyWith(
+            lastRunAt: completed,
+            nextRunAt: nextAt,
+            lastError: error,
+          ),
+        );
+      }
+    } catch (error) {
+      if (!_disposed) {
+        final completed = DateTime.now();
+        final nextAt = schedule.nextAfter(completed);
+        message = '定时备份失败 · $error';
+        try {
+          await _persistSchedule(
+            schedule.copyWith(
+              lastRunAt: completed,
+              nextRunAt: nextAt,
+              lastError: '$error',
+            ),
+          );
+        } catch (_) {
+          // 计划已到点；保留内存状态，避免每秒重试。
+        }
+      }
+    } finally {
+      if (!_disposed) {
+        _scheduledBackupRunning = false;
+        _lastScheduledBackupMessage = message;
+        _scheduledBackupRevision++;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> _persistSchedule(BackupSchedule schedule) async {
+    final current = _profile;
+    if (current == null) return;
+    final updated = current.copyWith(schedule: schedule);
+    await profileStore.save(updated);
+    _profile = updated;
+    _session?.updateProfile(updated);
+    _notify();
+  }
+
   Future<void> updateSessionLimit(int mib) async {
     final current = _profile;
     if (current == null) throw StateError('没有活动 profile。');
@@ -390,6 +541,8 @@ class AppController extends ChangeNotifier {
   /// 删除本地 profile/config/控制平面；TargetDir 与其他备份数据不受影响。
   Future<void> resetLocalConfig() async {
     if (queue.isBusy) throw StateError('运行中的命令结束后才能移除配置。');
+    _scheduleTimer?.cancel();
+    _scheduleTimer = null;
     _session?.lock();
     _session = null;
     _profile = null;
@@ -453,6 +606,8 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _scheduleTimer?.cancel();
+    _scheduleTimer = null;
     _session?.lock();
     queue.dispose();
     unawaited(_instanceLock?.release());

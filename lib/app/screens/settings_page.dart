@@ -13,6 +13,7 @@ import '../../core/lock_inspector.dart';
 import '../../core/vault_session.dart';
 import '../../core/vault_settings.dart';
 import '../theme.dart';
+import '../widgets/backup_schedule_card.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
 import '../widgets/vault_settings_form.dart';
@@ -392,14 +393,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       widget.controller.themeMode == AppThemeMode.system
                           ? '当前跟随系统外观；系统切换时立即更新。'
                           : '当前固定${widget.controller.themeMode.label}${widget.controller.themeMode == AppThemeMode.light ? '（默认）' : ''}。',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: AppColors.faint,
-                      ),
+                      style: TextStyle(fontSize: 10.5, color: AppColors.faint),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 18),
+              BackupScheduleCard(controller: widget.controller, enabled: !busy),
               const SizedBox(height: 18),
               SectionCard(
                 title: '备份参数',

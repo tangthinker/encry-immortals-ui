@@ -28,13 +28,35 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
   final Set<int> _visited = {0};
+  late int _seenScheduledRevision;
   static const _sectionTitles = ['概览', '备份', '历史', '恢复', '校验', '设置'];
 
   @override
   void initState() {
     super.initState();
+    _seenScheduledRevision = widget.controller.scheduledBackupRevision;
+    widget.controller.addListener(_onScheduledNotice);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setAppWindowTitle(_sectionTitles[_index]);
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScheduledNotice);
+    super.dispose();
+  }
+
+  void _onScheduledNotice() {
+    final revision = widget.controller.scheduledBackupRevision;
+    if (revision == _seenScheduledRevision) return;
+    _seenScheduledRevision = revision;
+    final message = widget.controller.lastScheduledBackupMessage;
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)
+          ?.showSnackBar(SnackBar(content: Text(message)));
     });
   }
 
@@ -209,8 +231,7 @@ class _MainShellState extends State<MainShell> {
               LogicalKeyboardKey.keyC,
               meta: true,
             ),
-            onSelected: () =>
-                _invokeTextIntent(CopySelectionTextIntent.copy),
+            onSelected: () => _invokeTextIntent(CopySelectionTextIntent.copy),
           ),
           PlatformMenuItem(
             label: '粘贴',
@@ -342,9 +363,8 @@ class _MainShellState extends State<MainShell> {
 
   void _lock() {
     if (!widget.controller.lock()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('命令运行中，结束后才能锁定。')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('命令运行中，结束后才能锁定。')));
     }
   }
 
@@ -394,10 +414,7 @@ class _MainShellState extends State<MainShell> {
         );
         Widget content = scaffold;
         if (Platform.isMacOS) {
-          content = PlatformMenuBar(
-            menus: _buildMenus(busy),
-            child: content,
-          );
+          content = PlatformMenuBar(menus: _buildMenus(busy), child: content);
         } else {
           content = CallbackShortcuts(
             bindings: {
@@ -405,25 +422,27 @@ class _MainShellState extends State<MainShell> {
                 SingleActivator(
                   LogicalKeyboardKey(0x00000000030 + index + 1),
                   control: true,
-                ): () => _navigate(index),
+                ): () =>
+                    _navigate(index),
               const SingleActivator(
                 LogicalKeyboardKey.keyB,
                 control: true,
                 shift: true,
-              ): () => _navigate(1),
+              ): () =>
+                  _navigate(1),
               const SingleActivator(
                 LogicalKeyboardKey.keyR,
                 control: true,
                 shift: true,
-              ): () => _navigate(3),
+              ): () =>
+                  _navigate(3),
               const SingleActivator(
                 LogicalKeyboardKey.keyY,
                 control: true,
-              ): () => _navigate(4),
-              const SingleActivator(
-                LogicalKeyboardKey.keyR,
-                control: true,
-              ): controller.requestRefresh,
+              ): () =>
+                  _navigate(4),
+              const SingleActivator(LogicalKeyboardKey.keyR, control: true):
+                  controller.requestRefresh,
               const SingleActivator(
                 LogicalKeyboardKey.keyL,
                 control: true,
@@ -433,7 +452,8 @@ class _MainShellState extends State<MainShell> {
               const SingleActivator(
                 LogicalKeyboardKey.comma,
                 control: true,
-              ): () => _navigate(5),
+              ): () =>
+                  _navigate(5),
             },
             child: content,
           );
@@ -465,7 +485,7 @@ class _Sidebar extends StatelessWidget {
     final targetName = profile == null ? '未配置' : p.basename(profile.targetDir);
     return Container(
       width: 240,
-      decoration:  BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(right: BorderSide(color: AppColors.borderSoft)),
       ),
@@ -497,10 +517,7 @@ class _Sidebar extends StatelessWidget {
                         targetName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.faint,
-                        ),
+                        style: TextStyle(fontSize: 10, color: AppColors.faint),
                       ),
                     ],
                   ),
@@ -581,7 +598,7 @@ class _Sidebar extends StatelessWidget {
                       Container(
                         width: 7,
                         height: 7,
-                        decoration:  BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
@@ -592,7 +609,7 @@ class _Sidebar extends StatelessWidget {
                           'core ${controller.coreVersion ?? '—'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:  TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Menlo',
                             fontSize: 10,
                             color: AppColors.muted,
@@ -603,7 +620,7 @@ class _Sidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                 Center(
+                Center(
                   child: Text(
                     'v$appVersion',
                     style: TextStyle(fontSize: 10, color: AppColors.faint),
@@ -686,15 +703,15 @@ class _TargetLockBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      decoration:  BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.warningSurface,
         border: Border(bottom: BorderSide(color: AppColors.warningBorder)),
       ),
       child: Row(
         children: [
-           Icon(Icons.warning_amber_rounded, size: 15, color: AppColors.amber),
+          Icon(Icons.warning_amber_rounded, size: 15, color: AppColors.amber),
           const SizedBox(width: 8),
-           Expanded(
+          Expanded(
             child: Text(
               '检测到 TargetDir 写锁：上次写入可能被中断。确认没有其他进程后，在设置中诊断。',
               style: TextStyle(fontSize: 11.5, color: AppColors.amber),
@@ -718,7 +735,7 @@ class _BusyBar extends StatelessWidget {
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration:  BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surfaceRaised,
         border: Border(bottom: BorderSide(color: AppColors.borderSoft)),
       ),
@@ -733,13 +750,10 @@ class _BusyBar extends StatelessWidget {
           Expanded(
             child: Text(
               '$label · 所有命令严格串行',
-              style:  TextStyle(fontSize: 11.5, color: AppColors.muted),
+              style: TextStyle(fontSize: 11.5, color: AppColors.muted),
             ),
           ),
-          TextButton(
-            onPressed: onCancel,
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: onCancel, child: const Text('取消')),
         ],
       ),
     );

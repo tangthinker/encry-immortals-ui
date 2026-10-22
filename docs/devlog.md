@@ -5,6 +5,76 @@
 
 ---
 
+## 2026-10-22 23:00 · 定时备份：每天/每周/每月/固定间隔
+
+### 目标
+
+支持每天、每周、每月指定时间执行一次备份，也支持每 N 分钟/小时/天执行一次。
+
+### 设计约束
+
+- 主密码不落盘，因此**没有锁定时自动解锁**；调度器只在应用运行且 vault 已解锁时执行。
+- 应用完全退出时没有后台进程；下次启动解锁后，如果计划时间已过，补跑一次。
+- 不引入系统级 launchd/Task Scheduler，也不保存密码到 Keychain。
+
+### 计划模型
+
+新增 `lib/core/backup_schedule.dart`：
+
+- `off / daily / weekly / monthly / interval` 五种模式。
+- 每天/每周/每月支持本地时间 `HH:mm`；每周支持周一..周日；每月 1..31，短月份自动使用最后一天。
+- 固定间隔 5 分钟..30 天，按分钟存储，UI 支持分钟/小时/天。
+- `nextAfter(now)` 纯函数计算下次执行；`nextRunAt`、`lastRunAt`、`lastError` 持久化。
+- 计划存入 `profile.json` 的 `schedule` 字段，旧 profile 自动视为关闭。
+
+### 调度器
+
+`AppController` 内新增 30 秒检查一次的 `Timer`：
+
+- initialize 时恢复 `nextRunAt`；缺失但已启用的计划自动计算并保存。
+- 解锁成功后立即检查一次；锁定、命令运行中时跳过本轮并保留 due 状态。
+- 到点、已解锁、队列空闲时调用 `session.backup(message: '定时备份')`。
+- 成功后刷新 status/target lock、更新上次/下次时间并递增数据版本；失败写入 `lastError` 和下一次时间，避免每 30 秒重试轰炸。
+- 定时备份完成后通过 `scheduledBackupRevision` 让 shell 显示 SnackBar。
+- 删除本地 profile、dispose 时取消 Timer。
+- 计划修改会立即计算新的 `nextRunAt` 并重启 Timer。
+
+### 设置界面
+
+设置页新增“定时备份”卡片：
+
+- 频率下拉：关闭/每天/每周/每月/固定间隔。
+- 时间选择器（本地时区、24 小时制）；每周选择星期；每月选择日期；固定间隔输入数值+单位。
+- 显示当前计划、下次执行、上次执行、上次错误。
+- 明确提示：应用必须保持运行并已解锁；锁定/错过时解锁后补跑；应用完全退出时不会后台执行。
+
+截图：[定时备份设置](assets/m1-settings-schedule-light.jpg)。
+
+### 验证
+
+```text
+flutter analyze                 No issues found
+flutter test                    86 passed, 3 skipped
+新增测试                       backup_schedule_test（每天/每周/每月/间隔/边界/JSON）
+                               profile_test（schedule 往返）
+```
+
+构建：
+
+```text
+flutter build macos --debug     成功
+flutter build macos --release   成功；bundle integrity: verified
+```
+
+### 风险 / 取舍
+
+- 不是系统级调度：应用被彻底退出时不会触发；这是“主密码不落盘”的直接结果。
+- 定时任务与应用命令共享串行队列；到点若正在执行其他命令，会延后到队列空闲再执行。
+- 如果用户恰好在同一时间手动备份，可能出现一次额外提交；后续可在队列层做“刚完成手动备份”去重。
+- 月计划 31 日在短月按最后一天执行；UI 已提示。
+
+---
+
 ## 2026-10-22 22:40 · 侧边栏锁定/设置 tab + 默认浅色主题
 
 ### 目标

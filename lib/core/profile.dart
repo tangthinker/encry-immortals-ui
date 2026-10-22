@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'backup_schedule.dart';
 import 'vault_settings.dart';
 
 enum ProfileMode {
@@ -36,6 +37,7 @@ class Profile {
     required this.mode,
     required this.createdAt,
     VaultSettings? settings,
+    this.schedule = const BackupSchedule(),
     int? sessionMaxMib,
     bool? ignoreXattr,
     this.schema = currentSchema,
@@ -56,6 +58,7 @@ class Profile {
   final ProfileMode mode;
   final DateTime createdAt;
   final VaultSettings settings;
+  final BackupSchedule schedule;
 
   int get sessionMaxMib => settings.sessionMaxMib;
   bool get ignoreXattr => settings.ignoreXattr;
@@ -72,6 +75,7 @@ class Profile {
     'created_at': createdAt.toUtc().toIso8601String(),
     // 新格式；同时写 legacy 字段，便于旧版本/手工排查。
     'settings': settings.toJson(),
+    'schedule': schedule.toJson(),
     'session_max_mib': settings.sessionMaxMib,
     'ignore_xattr': settings.ignoreXattr,
   };
@@ -113,6 +117,12 @@ class Profile {
       throw ProfileFormatException('profile.json 的 created_at 非法：$createdRaw');
     }
 
+    final rawSchedule = json['schedule'];
+    final schedule = rawSchedule is Map
+        ? BackupSchedule.fromJson(
+            rawSchedule.map((key, value) => MapEntry('$key', value)),
+          )
+        : const BackupSchedule();
     final rawSettings = json['settings'];
     final settings = rawSettings is Map
         ? VaultSettings.fromJson(
@@ -134,6 +144,7 @@ class Profile {
       mode: ProfileMode.parse(json['mode'] as String? ?? 'created'),
       createdAt: createdAt,
       settings: settings,
+      schedule: schedule,
     );
   }
 
@@ -146,6 +157,7 @@ class Profile {
     ProfileMode? mode,
     DateTime? createdAt,
     VaultSettings? settings,
+    BackupSchedule? schedule,
     int? sessionMaxMib,
     bool? ignoreXattr,
   }) {
@@ -164,6 +176,7 @@ class Profile {
       mode: mode ?? this.mode,
       createdAt: createdAt ?? this.createdAt,
       settings: nextSettings,
+      schedule: schedule ?? this.schedule,
     );
   }
 

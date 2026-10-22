@@ -35,6 +35,7 @@
 | 历史 | `log` 提交列表、`show` 变更明细、`ls --at` 文件树与按路径过滤 |
 | 恢复 | 强制 `doctor --chain` 预检 → `restore --list-packs` 检查缺失 → 覆盖策略 → `--dry-run` 或正式恢复；支持跳过缺失 pack / 等待同步 |
 | 校验 | `verify --sample N` / `--deep` 与 `doctor --chain`，展示 PASS/WARN/FAIL、缺失/损坏/抽样失败 |
+| 定时备份 | 每天/每周/每月指定时间，或每 N 分钟/小时/天；计划保存到 profile，应用运行且已解锁时执行，锁定/错过时解锁后补跑 |
 | 设置 | 查看 profile/路径/核心完整性；编辑全部已实现参数（普通/高级）；切换外观（浅色/跟随系统/深色，默认浅色）；重新验证密码后导出 Armor Key；写锁诊断；立即锁定；移除本地配置 |
 | 应用保护 | 单实例文件锁；关闭窗口时若命令仍在运行会阻止退出并确认取消；全命令串行队列 |
 | 桌面体验 | 原生菜单栏（应用/文件/编辑/显示/操作/窗口/帮助）、⌘1–5/⌘⇧B/⌘, 等快捷键、内容化窗口标题、侧边栏顶部锁定按钮与设置 tab |
@@ -115,7 +116,7 @@ Debug 构建的 Xcode phase（`tool/xcode_debug_sidecar.sh`）会从 submodule �
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                         # 77 个单元/组件测试，不需要 sidecar
+flutter --no-version-check test                         # 86 个单元/组件测试，不需要 sidecar
 flutter --no-version-check test test/core test/app      # 只跑非集成测试
 
 # 真实链路：创建 → 备份 → 历史 → 恢复 → 校验 → 加入库
@@ -231,6 +232,7 @@ Windows 的打包脚本仍在仓库中，但尚未在 Windows 宿主/CI 实测�
 - Windows 构建与 GUI 子系统 stdio 未实测；Windows 控制锁仍需上游 `LockFileEx` 改造（见技术选型 P0）。
 - macOS release 仅 ad-hoc 签名；未公证，未做 Apple Silicon + Intel universal 单包。
 - 空闲自动锁定未实现（仅手动锁定/退出清除密码）；大快照的 `ls` 仍一次加载完整文件树。
+- 定时备份是应用内调度器，不是 launchd/Windows 任务计划：应用退出时不会后台运行；主密码不落盘，锁定时无法自动解锁。
 - 设置是主窗口内的功能页（通过应用菜单 ⌘, 或侧边栏更多菜单进入），不是独立的 macOS 设置窗口；侧边栏暂不支持手动隐藏。
 - 设置页可编辑全部**当前版本实际生效**的 CLI 参数；`concurrency.hashers`、`checkpoint.*`、`verify.auto_strict_every` 等上游尚未实现的字段不暴露。
 - `TargetDir`、应用控制平面目录与源根目录在创建后固定；结构性参数（pack/slice/small_file）变更只影响后续提交，已有快照仍可读。

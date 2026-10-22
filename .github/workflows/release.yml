@@ -117,7 +117,7 @@ jobs:
             - 构建：Flutter `3.47.5`，核心 `v0.1.5`，架构见产物文件名。
             - 签名：ad-hoc。未做 Developer ID 公证；首次打开如被 Gatekeeper 阻止，请右键打开，或执行
               `xattr -dr com.apple.quarantine "Encry Immortals.app"`。
-            - 测试：`flutter analyze`、77 个单元/组件测试、bundle 内 sidecar SHA-256 校验。
+            - 测试：`flutter analyze`、86 个单元/组件测试、bundle 内 sidecar SHA-256 校验。
           files: dist/*
           fail_on_unmatched_files: true
           draft: false
