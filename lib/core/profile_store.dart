@@ -63,8 +63,7 @@ class ProfileStore {
     final config = VaultConfig(
       vaultDir: profile.vaultDir,
       targetDir: profile.targetDir,
-      ignoreXattr: profile.ignoreXattr,
-      sessionMaxMib: profile.sessionMaxMib,
+      settings: profile.settings,
     );
     await config.writeTo(profile.configPath);
   }
@@ -87,9 +86,7 @@ class ProfileStore {
     final root = p.canonicalize(paths.root);
     final target = p.canonicalize(vaultDir);
     if (!p.isWithin(root, target)) {
-      throw ProfileStoreException(
-        '拒绝删除不在应用数据目录内的 vault：$vaultDir',
-      );
+      throw ProfileStoreException('拒绝删除不在应用数据目录内的 vault：$vaultDir');
     }
     final directory = Directory(target);
     if (await directory.exists()) {

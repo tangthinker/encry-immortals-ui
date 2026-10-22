@@ -17,15 +17,9 @@ import '../core/platform_service.dart';
 import '../core/profile.dart';
 import '../core/profile_store.dart';
 import '../core/vault_session.dart';
+import '../core/vault_settings.dart';
 
-enum AppPhase {
-  starting,
-  alreadyRunning,
-  failed,
-  onboarding,
-  locked,
-  unlocked,
-}
+enum AppPhase { starting, alreadyRunning, failed, onboarding, locked, unlocked }
 
 class UnlockOutcome {
   const UnlockOutcome({required this.success, this.result, this.message});
@@ -120,9 +114,7 @@ class AppController extends ChangeNotifier {
         return;
       }
       if (!loaded.vaultInitialized) {
-        throw ProfileStoreException(
-          '本地控制平面缺少 vault.meta：${loaded.vaultDir}',
-        );
+        throw ProfileStoreException('本地控制平面缺少 vault.meta：${loaded.vaultDir}');
       }
       _session = VaultSession(
         gateway: _runtime!.gateway,
@@ -140,7 +132,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<CoreRuntime> _loadRuntime() {
-    return CoreRuntime.load(allowEnvironmentOverride: _allowEnvironmentOverride);
+    return CoreRuntime.load(
+      allowEnvironmentOverride: _allowEnvironmentOverride,
+    );
   }
 
   Future<void> retryStartup() async {
@@ -154,6 +148,7 @@ class AppController extends ChangeNotifier {
     required String sourceRoot,
     required String targetDir,
     required String password,
+    VaultSettings settings = const VaultSettings(),
     OnboardingLog? onLog,
     OnboardingStepListener? onStep,
   }) async {
@@ -183,6 +178,7 @@ class AppController extends ChangeNotifier {
       sourceRoot: sourceRoot,
       targetDir: targetDir,
       password: password,
+      settings: settings,
       onLog: onLog,
       onStep: onStep,
     );
@@ -193,6 +189,7 @@ class AppController extends ChangeNotifier {
     required String targetDir,
     required String armorKey,
     required String password,
+    VaultSettings settings = const VaultSettings(),
     OnboardingLog? onLog,
     OnboardingStepListener? onStep,
   }) async {
@@ -223,19 +220,20 @@ class AppController extends ChangeNotifier {
       targetDir: targetDir,
       armorKey: armorKey,
       password: password,
+      settings: settings,
       onLog: onLog,
       onStep: onStep,
     );
   }
 
   /// 在 onboarding 成功页点击“进入应用”后调用：建立会话并解锁。
-  Future<UnlockOutcome> activateProfile(Profile profile, String password) async {
+  Future<UnlockOutcome> activateProfile(
+    Profile profile,
+    String password,
+  ) async {
     final runtime = _runtime;
     if (runtime == null) {
-      return const UnlockOutcome(
-        success: false,
-        message: '核心 sidecar 不可用。',
-      );
+      return const UnlockOutcome(success: false, message: '核心 sidecar 不可用。');
     }
     _profile = profile;
     _session = VaultSession(
@@ -256,10 +254,7 @@ class AppController extends ChangeNotifier {
   Future<UnlockOutcome> unlock(String password) async {
     final session = _session;
     if (session == null) {
-      return const UnlockOutcome(
-        success: false,
-        message: '没有可解锁的 profile。',
-      );
+      return const UnlockOutcome(success: false, message: '没有可解锁的 profile。');
     }
     _unlocking = true;
     _unlockError = null;
@@ -350,18 +345,23 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> updateSessionLimit(int mib) async {
-    if (queue.isBusy) throw StateError('运行中的命令结束后才能修改配置。');
+  Future<void> updateVaultSettings(VaultSettings settings) async {
+    if (queue.isBusy) throw StateError('运行中的命令结束后才能修改参数。');
     final current = _profile;
     if (current == null) throw StateError('没有活动 profile。');
-    if (mib < 1 || mib > 1024 * 1024) {
-      throw ArgumentError('session_max_mib 必须在 1..1048576 之间。');
-    }
-    final updated = current.copyWith(sessionMaxMib: mib);
+    final error = settings.validate();
+    if (error != null) throw ArgumentError(error);
+    final updated = current.copyWith(settings: settings);
     await profileStore.saveWithConfig(updated);
     _profile = updated;
     _session?.updateProfile(updated);
     _notify();
+  }
+
+  Future<void> updateSessionLimit(int mib) async {
+    final current = _profile;
+    if (current == null) throw StateError('没有活动 profile。');
+    await updateVaultSettings(current.settings.copyWith(sessionMaxMib: mib));
   }
 
   Future<void> forgetProfile() => resetLocalConfig();

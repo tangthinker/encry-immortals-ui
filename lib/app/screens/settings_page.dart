@@ -1,8 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-
-import 'dart:io';
 
 import '../app_controller.dart';
 import '../app_info.dart' as info;
@@ -10,9 +10,11 @@ import '../../core/core_locator.dart';
 import '../../core/core_models.dart';
 import '../../core/lock_inspector.dart';
 import '../../core/vault_session.dart';
+import '../../core/vault_settings.dart';
 import '../theme.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
+import '../widgets/vault_settings_form.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({required this.controller, this.onDone, super.key});
@@ -25,7 +27,8 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late final TextEditingController _sessionMax;
+  late VaultSettings _settings;
+  late GlobalKey<VaultSettingsFormState> _settingsKey;
   bool _saving = false;
   bool _checkingLocks = false;
   String? _saveError;
@@ -33,33 +36,84 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _sessionMax = TextEditingController(
-      text: '${widget.controller.profile?.sessionMaxMib ?? 1024}',
-    );
+    _settings = widget.controller.profile?.settings ?? const VaultSettings();
+    _settingsKey = GlobalKey<VaultSettingsFormState>();
   }
 
-  @override
-  void dispose() {
-    _sessionMax.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveSessionMax() async {
-    final value = int.tryParse(_sessionMax.text.trim());
-    if (value == null || value < 1 || value > 1024 * 1024) {
-      setState(() => _saveError = '必须是 1..1048576 之间的整数。');
+  Future<void> _saveSettings() async {
+    final form = _settingsKey.currentState;
+    final settings = form?.read() ?? _settings;
+    final error = settings.validate();
+    if (error != null) {
+      setState(() => _saveError = error);
+      form?.validate();
       return;
+    }
+    final current = widget.controller.profile?.settings;
+    final layoutChanged =
+        current != null &&
+        (current.packMaxMiB != settings.packMaxMiB ||
+            current.slicePlainMiB != settings.slicePlainMiB ||
+            current.smallFileMiB != settings.smallFileMiB);
+    final xattrDisabled = Platform.isMacOS && settings.ignoreXattr == false;
+    if (layoutChanged) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('修改存储结构参数？'),
+          content: const Text(
+            'pack/slice/small_file 只影响后续备份，已有快照仍可读取；'
+            '但不同 pack 尺寸会让同步/校验行为发生变化。确认继续？',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('确认修改'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    if (xattrDisabled && current?.ignoreXattr != false) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('关闭 xattr 忽略？'),
+          content: const Text(
+            'macOS 上带扩展属性/ACL 的文件可能让备份以 E21 失败。'
+            '只有明确需要保留 xattr 时才关闭。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('保持开启'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('仍然关闭'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
     }
     setState(() {
       _saving = true;
       _saveError = null;
     });
     try {
-      await widget.controller.updateSessionLimit(value);
+      await widget.controller.updateVaultSettings(settings);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('session_max_mib 已更新，下次备份生效。')),
-      );
+      setState(() => _settings = settings);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('参数已保存，下次备份/恢复命令生效。')));
     } catch (error) {
       if (mounted) setState(() => _saveError = '$error');
     } finally {
@@ -103,9 +157,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _lock() async {
     if (!widget.controller.lock()) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('命令运行中，结束后才能锁定。')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('命令运行中，结束后才能锁定。')));
     }
   }
 
@@ -121,9 +174,8 @@ class _SettingsPageState extends State<SettingsPage> {
       await widget.controller.forgetProfile();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$error')));
     }
   }
 
@@ -159,9 +211,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _copy(String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制。')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('已复制。')));
   }
 
   @override
@@ -200,10 +251,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: Column(
                   children: [
-                    InfoRow(
-                      label: '名称',
-                      value: profile?.name ?? '—',
-                    ),
+                    InfoRow(label: '名称', value: profile?.name ?? '—'),
                     const Divider(),
                     InfoRow(
                       label: '源目录',
@@ -263,6 +311,50 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 18),
               SectionCard(
+                title: '备份参数',
+                subtitle: '普通参数与高级参数；保存后写入 config.toml（0600）',
+                trailing: FilledButton(
+                  onPressed: busy || _saving ? null : _saveSettings,
+                  child: Text(_saving ? '保存中…' : '保存参数'),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    VaultSettingsForm(
+                      key: _settingsKey,
+                      initial: _settings,
+                      enabled: !busy && !_saving,
+                      onChanged: (value) => _settings = value,
+                    ),
+                    if (_saveError != null) ...[
+                      const SizedBox(height: 12),
+                      NoticeBanner(
+                        title: '参数未保存',
+                        message: _saveError!,
+                        color: AppColors.danger,
+                        icon: Icons.error_outline_rounded,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: busy || _saving ? null : _saveSettings,
+                        icon: const Icon(Icons.save_outlined, size: 16),
+                        label: Text(_saving ? '保存中…' : '保存参数'),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '修改会立即写入本地配置，并在下一次 sidecar 命令时生效；'
+                      '修改 TargetDir 或换源需要重新创建/加入库。',
+                      style: TextStyle(fontSize: 10.5, color: AppColors.faint),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SectionCard(
                 title: '核心与完整性',
                 subtitle: '所有数据事实以 sidecar JSON 为准',
                 child: Column(
@@ -307,57 +399,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     const Divider(),
                     InfoRow(
                       label: '客户端',
-                      value: 'v${info.appVersion}+${info.appBuildNumber} · 契约 v${info.integrationContractVersion}',
+                      value:
+                          'v${info.appVersion}+${info.appBuildNumber} · 契约 v${info.integrationContractVersion}',
                     ),
                     const Divider(),
                     InfoRow(
                       label: '平台',
                       value: controller.platform.platformLabel,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              SectionCard(
-                title: '备份配置',
-                subtitle: '写入 config.toml（0600）；运行中的命令结束后才能修改',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _sessionMax,
-                            enabled: !busy && !_saving,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'session_max_mib',
-                              helperText: '单次 backup 最多写入的明文 MiB；默认 1024',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton(
-                          onPressed: busy || _saving ? null : _saveSessionMax,
-                          child: Text(_saving ? '保存中…' : '保存'),
-                        ),
-                      ],
-                    ),
-                    if (_saveError != null) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        _saveError!,
-                        style:  TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.danger,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                     Text(
-                      '该值只影响单次提交的明文上限；单个大于该值的文件永远不会被写入。',
-                      style: TextStyle(fontSize: 10.5, color: AppColors.faint),
                     ),
                   ],
                 ),
@@ -382,10 +430,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     _ActionRow(
                       icon: Icons.construction_outlined,
                       title: '写锁诊断',
-                      description:
-                          '检查 TargetDir/.eimmortal.lock 与控制锁；删除写锁属于高风险操作，需要明确确认。',
+                      description: '检查 TargetDir/.eimmortal.lock 与控制锁；删除写锁属于高风险操作，需要明确确认。',
                       button: OutlinedButton(
-                        onPressed: busy || _checkingLocks ? null : _diagnoseLocks,
+                        onPressed: busy || _checkingLocks
+                            ? null
+                            : _diagnoseLocks,
                         child: Text(_checkingLocks ? '检查中…' : '检查'),
                       ),
                     ),
@@ -403,12 +452,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     _ActionRow(
                       icon: Icons.delete_outline_rounded,
                       title: '移除本地配置',
-                      description:
-                          '删除 profile、config.toml 与本地控制平面（vault）；TargetDir 不会被删除。',
+                      description: '删除 profile、config.toml 与本地控制平面（vault）；TargetDir 不会被删除。',
                       danger: true,
                       button: OutlinedButton(
                         onPressed: busy ? null : _forgetProfile,
-                        child:  Text(
+                        child: Text(
                           '移除',
                           style: TextStyle(color: AppColors.danger),
                         ),
@@ -430,8 +478,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       mono: true,
                       selectable: true,
                       trailing: IconButton(
-                        onPressed: () =>
-                            controller.platform.revealPath(controller.paths.root),
+                        onPressed: () => controller.platform.revealPath(
+                          controller.paths.root,
+                        ),
                         icon: const Icon(Icons.folder_open_rounded, size: 16),
                         tooltip: '打开应用数据目录',
                       ),
@@ -520,7 +569,7 @@ class _ActionRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style:  TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.text,
@@ -529,7 +578,7 @@ class _ActionRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   description,
-                  style:  TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     height: 1.5,
                     color: AppColors.faint,
@@ -569,19 +618,27 @@ class _ForgetProfileDialogState extends State<_ForgetProfileDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             Text(
+            Text(
               '会删除 profile.json、config.toml 和应用数据目录里的本地控制平面（vault）。',
-              style: TextStyle(fontSize: 12.5, height: 1.6, color: AppColors.muted),
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.6,
+                color: AppColors.muted,
+              ),
             ),
             const SizedBox(height: 8),
-             Text(
+            Text(
               'TargetDir 和其中的备份不会被删除。重新加入需要 Armor Key 与主密码。',
-              style: TextStyle(fontSize: 12.5, height: 1.6, color: AppColors.muted),
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.6,
+                color: AppColors.muted,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               widget.targetDir,
-              style:  TextStyle(
+              style: TextStyle(
                 fontFamily: 'Menlo',
                 fontSize: 10.5,
                 color: AppColors.faint,
@@ -593,7 +650,7 @@ class _ForgetProfileDialogState extends State<_ForgetProfileDialog> {
               controlAffinity: ListTileControlAffinity.leading,
               value: _confirmed,
               onChanged: (value) => setState(() => _confirmed = value ?? false),
-              title:  Text(
+              title: Text(
                 '我明白需要 Armor Key + 主密码才能重新加入',
                 style: TextStyle(fontSize: 12, color: AppColors.text),
               ),
@@ -684,9 +741,8 @@ class _ExportKeyDialogState extends State<_ExportKeyDialog> {
   Future<void> _copy(String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制；注意云剪贴板与输入法可能记录。')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('已复制；注意云剪贴板与输入法可能记录。')));
   }
 
   @override
@@ -703,7 +759,7 @@ class _ExportKeyDialogState extends State<_ExportKeyDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Text(
+                    Text(
                       'Armor Key 用于在另一台机器恢复数据。请再次输入主密码确认是你本人。',
                       style: TextStyle(
                         fontSize: 12.5,
@@ -718,15 +774,13 @@ class _ExportKeyDialogState extends State<_ExportKeyDialog> {
                       autofocus: true,
                       enabled: !_loading,
                       onSubmitted: (_) => _verifyAndExport(),
-                      decoration: const InputDecoration(
-                        labelText: '主密码',
-                      ),
+                      decoration: const InputDecoration(labelText: '主密码'),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 10),
                       Text(
                         _error!,
-                        style:  TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           color: AppColors.danger,
                         ),
@@ -738,21 +792,21 @@ class _ExportKeyDialogState extends State<_ExportKeyDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     NoticeBanner(
+                    NoticeBanner(
                       title: '只保存在内存与剪贴板',
                       message: '不要把 Armor Key 发到聊天工具或写入明文文件；建议保存到密码管理器。',
                       color: AppColors.amber,
                       icon: Icons.key_rounded,
                     ),
                     const SizedBox(height: 14),
-                     Text(
+                    Text(
                       '单行版',
                       style: TextStyle(fontSize: 11, color: AppColors.faint),
                     ),
                     const SizedBox(height: 6),
                     SelectableText(
                       key.armor,
-                      style:  TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Menlo',
                         fontSize: 11.5,
                         height: 1.6,
@@ -766,14 +820,14 @@ class _ExportKeyDialogState extends State<_ExportKeyDialog> {
                       label: const Text('复制单行版'),
                     ),
                     const SizedBox(height: 8),
-                     Text(
+                    Text(
                       '分组版（便于打印/手抄）',
                       style: TextStyle(fontSize: 11, color: AppColors.faint),
                     ),
                     const SizedBox(height: 6),
                     SelectableText(
                       key.grouped,
-                      style:  TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Menlo',
                         fontSize: 10.5,
                         height: 1.6,
@@ -804,7 +858,6 @@ class _ExportKeyDialogState extends State<_ExportKeyDialog> {
     );
   }
 }
-
 
 class _LockDiagnosticsDialog extends StatefulWidget {
   const _LockDiagnosticsDialog({
@@ -850,9 +903,7 @@ class _LockDiagnosticsDialogState extends State<_LockDiagnosticsDialog> {
     );
     if (confirmed != true) return;
     try {
-      await TargetLockInfo.delete(
-        p.dirname(_target.path),
-      );
+      await TargetLockInfo.delete(p.dirname(_target.path));
       final next = await TargetLockInfo.inspect(p.dirname(_target.path));
       setState(() {
         _target = next;
@@ -888,7 +939,9 @@ class _LockDiagnosticsDialogState extends State<_LockDiagnosticsDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               NoticeBanner(
-                title: _target.locked ? '检测到 TargetDir 写锁' : '未检测到 TargetDir 写锁',
+                title: _target.locked
+                    ? '检测到 TargetDir 写锁'
+                    : '未检测到 TargetDir 写锁',
                 message: _target.locked
                     ? '可能是上次写入被中断留下的。请先确认没有其他进程在运行。'
                     : '写入锁当前不存在。',
@@ -898,7 +951,12 @@ class _LockDiagnosticsDialogState extends State<_LockDiagnosticsDialog> {
                     : Icons.check_circle_outline_rounded,
               ),
               const SizedBox(height: 14),
-              InfoRow(label: '锁文件', value: _target.path, mono: true, selectable: true),
+              InfoRow(
+                label: '锁文件',
+                value: _target.path,
+                mono: true,
+                selectable: true,
+              ),
               if (_target.exists) ...[
                 const Divider(),
                 InfoRow(
@@ -910,31 +968,44 @@ class _LockDiagnosticsDialogState extends State<_LockDiagnosticsDialog> {
                   label: '开始时间',
                   value: _target.startedAt == null
                       ? '?'
-                      : _target.startedAt!.toLocal().toString().substring(0, 19),
+                      : _target.startedAt!.toLocal().toString().substring(
+                          0,
+                          19,
+                        ),
                 ),
                 if (_target.toolVersion != null) ...[
                   const Divider(),
-                  InfoRow(label: 'tool', value: _target.toolVersion!, mono: true),
+                  InfoRow(
+                    label: 'tool',
+                    value: _target.toolVersion!,
+                    mono: true,
+                  ),
                 ],
               ],
               const Divider(),
               InfoRow(
                 label: '控制锁',
                 value: _controlLocked ? '被占用（命令返回 E20）' : '可获取',
-                valueColor: _controlLocked ? AppColors.danger : AppColors.success,
+                valueColor: _controlLocked
+                    ? AppColors.danger
+                    : AppColors.success,
               ),
               const SizedBox(height: 8),
               Text(
                 Platform.isWindows
                     ? 'Windows 控制锁是 O_EXCL 标记文件；崩溃后可能残留，需要在确认没有进程后删除。'
                     : 'Unix 控制锁是 flock；文件存在不代表被占用，删除文件不会释放锁。',
-                style:  TextStyle(fontSize: 11, height: 1.5, color: AppColors.faint),
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.5,
+                  color: AppColors.faint,
+                ),
               ),
               if (_message != null) ...[
                 const SizedBox(height: 10),
                 Text(
                   _message!,
-                  style:  TextStyle(fontSize: 11.5, color: AppColors.muted),
+                  style: TextStyle(fontSize: 11.5, color: AppColors.muted),
                 ),
               ],
             ],
@@ -949,7 +1020,7 @@ class _LockDiagnosticsDialogState extends State<_LockDiagnosticsDialog> {
         if (_target.locked)
           OutlinedButton(
             onPressed: _deleteTargetLock,
-            child:  Text(
+            child: Text(
               '删除 TargetDir 写锁',
               style: TextStyle(color: AppColors.danger),
             ),

@@ -13,6 +13,7 @@ import 'package:encry_immortals_ui/core/core_runtime.dart';
 import 'package:encry_immortals_ui/core/onboarding_service.dart';
 import 'package:encry_immortals_ui/core/profile_store.dart';
 import 'package:encry_immortals_ui/core/vault_session.dart';
+import 'package:encry_immortals_ui/core/vault_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -185,7 +186,10 @@ void main() {
 
       final chainB = await sessionB.status(chain: true);
       expect(chainB.isSuccess, isTrue);
-      expect(VaultStatus.fromJson(chainB.jsonMap!).referencedPacks, greaterThanOrEqualTo(1));
+      expect(
+        VaultStatus.fromJson(chainB.jsonMap!).referencedPacks,
+        greaterThanOrEqualTo(1),
+      );
 
       final restoredB = Directory(p.join(root.path, 'restoredB'));
       final restoreB = await sessionB.restore(
@@ -208,9 +212,11 @@ void main() {
   );
 
   test(
-    'AppController：创建 → 激活 → 锁定 → 解锁 → 修改 session 上限',
+    'AppController：创建 → 激活 → 锁定 → 解锁 → 修改完整参数',
     () async {
-      final root = await Directory.systemTemp.createTemp('eimmortal_controller_it_');
+      final root = await Directory.systemTemp.createTemp(
+        'eimmortal_controller_it_',
+      );
       addTearDown(() async {
         if (root.existsSync()) await root.delete(recursive: true);
       });
@@ -237,8 +243,24 @@ void main() {
         sourceRoot: source.path,
         targetDir: target.path,
         password: password,
+        settings: const VaultSettings(
+          packMaxMiB: 64,
+          slicePlainMiB: 8,
+          smallFileMiB: 32,
+          sessionMaxMib: 512,
+          zstdLevel: 9,
+          scanMode: 'strict',
+          excludeRules: ['*.tmp'],
+          followHardlinks: 'split',
+          onChangeStrategy: 'skip',
+        ),
       );
       expect(created.success, isTrue, reason: created.error);
+      expect(created.profile!.settings.zstdLevel, 9);
+      final initialConfig = File(paths.configFile).readAsStringSync();
+      expect(initialConfig, contains('zstd_level = 9'));
+      expect(initialConfig, contains('pack_max_bytes = 67108864'));
+      expect(initialConfig, contains('strategy = "skip"'));
       final activated = await controller.activateProfile(
         created.profile!,
         password,
@@ -252,12 +274,25 @@ void main() {
       expect(unlocked.success, isTrue, reason: unlocked.message);
       expect(controller.phase, AppPhase.unlocked);
 
-      await controller.updateSessionLimit(2048);
+      await controller.updateVaultSettings(
+        const VaultSettings(
+          sessionMaxMib: 2048,
+          zstdLevel: 3,
+          scanMode: 'fast',
+          excludeRules: ['*.tmp', 'node_modules/**'],
+        ),
+      );
       final profile = await ProfileStore(paths).load();
       expect(profile?.sessionMaxMib, 2048);
+      expect(profile?.settings.zstdLevel, 3);
+      expect(profile?.settings.packMaxMiB, 128);
       final config = File(paths.configFile).readAsStringSync();
       expect(config, contains('session_max_mib = 2048'));
-      expect(controller.session?.profile.sessionMaxMib, 2048);
+      expect(config, contains('zstd_level = 3'));
+      expect(config, contains('exclude = ["*.tmp", "node_modules/**"]'));
+      expect(controller.session?.profile.settings.zstdLevel, 3);
+      await controller.refreshPreviewStatus();
+      expect(controller.previewStatus, isNotNull);
     },
     skip: enabled ? false : '需要 RUN_CORE_INTEGRATION=1 与 EIMMORTAL_CORE_PATH',
     timeout: const Timeout(Duration(minutes: 5)),

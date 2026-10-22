@@ -14,6 +14,7 @@ import 'core_models.dart';
 import 'core_result.dart';
 import 'profile.dart';
 import 'profile_store.dart';
+import 'vault_settings.dart';
 import 'vault_session.dart';
 
 class OnboardingValidationException implements Exception {
@@ -90,16 +91,22 @@ class OnboardingService {
     required String sourceRoot,
     required String targetDir,
     required String password,
+    VaultSettings settings = const VaultSettings(),
     OnboardingLog? onLog,
     OnboardingStepListener? onStep,
   }) async {
     _resetLocalState();
     try {
+      final settingsError = settings.validate();
+      if (settingsError != null) {
+        throw OnboardingValidationException(settingsError);
+      }
       await _validateCreate(sourceRoot, targetDir, password);
       final profile = await _prepareProfile(
         sourceRoot: sourceRoot,
         targetDir: targetDir,
         mode: ProfileMode.created,
+        settings: settings,
       );
 
       final configStep = await _record(
@@ -180,16 +187,22 @@ class OnboardingService {
     required String targetDir,
     required String armorKey,
     required String password,
+    VaultSettings settings = const VaultSettings(),
     OnboardingLog? onLog,
     OnboardingStepListener? onStep,
   }) async {
     _resetLocalState();
     try {
+      final settingsError = settings.validate();
+      if (settingsError != null) {
+        throw OnboardingValidationException(settingsError);
+      }
       await _validateJoin(sourceRoot, targetDir, armorKey, password);
       final profile = await _prepareProfile(
         sourceRoot: sourceRoot,
         targetDir: targetDir,
         mode: ProfileMode.joined,
+        settings: settings,
       );
 
       final configStep = await _record(
@@ -312,6 +325,7 @@ class OnboardingService {
     required String sourceRoot,
     required String targetDir,
     required ProfileMode mode,
+    required VaultSettings settings,
   }) async {
     final id = _newId();
     final profile = Profile(
@@ -325,8 +339,7 @@ class OnboardingService {
       sourceRoot: sourceRoot,
       mode: mode,
       createdAt: DateTime.now(),
-      sessionMaxMib: 1024,
-      ignoreXattr: Platform.isMacOS,
+      settings: settings,
     );
     return profile;
   }
@@ -394,7 +407,9 @@ class OnboardingService {
       throw const OnboardingValidationException('主密码不能包含换行。');
     }
     if (utf8.encode(password).length < 12) {
-      throw const OnboardingValidationException('主密码至少需要 12 个字节（推荐 4 个以上随机单词）。');
+      throw const OnboardingValidationException(
+        '主密码至少需要 12 个字节（推荐 4 个以上随机单词）。',
+      );
     }
   }
 

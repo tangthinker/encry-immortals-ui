@@ -9,6 +9,7 @@ import 'core_gateway.dart';
 import 'core_models.dart';
 import 'core_result.dart';
 import 'vault_config.dart';
+import 'vault_settings.dart';
 
 typedef SliceLogger = void Function(String message);
 
@@ -112,7 +113,9 @@ class VerticalSliceRunner {
             command: command,
             args: args,
             password: withPassword ? (passwordValue ?? '') : null,
-            configPath: withConfig ? p.join(workDir!.path, 'config.toml') : null,
+            configPath: withConfig
+                ? p.join(workDir!.path, 'config.toml')
+                : null,
           ),
         );
         _activeCancel = run.cancel;
@@ -164,9 +167,11 @@ class VerticalSliceRunner {
       final config = VaultConfig(
         vaultDir: p.join(workDir.path, 'vault'),
         targetDir: p.join(workDir.path, 'target'),
-        stagingDir: p.join(workDir.path, 'staging'),
-        ignoreXattr: true,
-        sessionMaxMib: 1024,
+        settings: VaultSettings(
+          stagingDir: p.join(workDir.path, 'staging'),
+          ignoreXattr: true,
+          sessionMaxMib: 1024,
+        ),
       );
       await config.writeTo(p.join(workDir.path, 'config.toml'));
 
@@ -180,7 +185,9 @@ class VerticalSliceRunner {
           return 'core $coreVersion';
         },
       );
-      if (version == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (version == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final init = await step(
         title: '创建临时库（stdin 密码）',
@@ -192,7 +199,9 @@ class VerticalSliceRunner {
             File(p.join(workDir!.path, 'vault', 'vault.meta')).existsSync(),
         detail: (_) => 'vault.meta 已创建；Armor Key 仅保留在内存',
       );
-      if (init == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (init == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final key = await step(
         title: '导出 Armor Key（脱敏）',
@@ -205,17 +214,24 @@ class VerticalSliceRunner {
         },
         detail: (_) => 'armor 可解析；内容不写日志',
       );
-      if (key == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (key == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final emptyLog = await step(
         title: '读取空历史',
         command: CoreCommand.log,
         withPassword: true,
         passwordValue: password,
-        accept: (result) => result.isSuccess && result.jsonList != null && result.jsonList!.isEmpty,
+        accept: (result) =>
+            result.isSuccess &&
+            result.jsonList != null &&
+            result.jsonList!.isEmpty,
         detail: (result) => 'log 为空数组（${result.duration.inMilliseconds} ms）',
       );
-      if (emptyLog == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (emptyLog == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final backup = await step(
         title: '备份 3 个文件',
@@ -239,7 +255,9 @@ class VerticalSliceRunner {
               'pack=${summary.packBytes} B';
         },
       );
-      if (backup == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (backup == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
       final backupSeq = BackupSummary.fromJson(backup.jsonMap!).seq;
 
       final history = await step(
@@ -257,7 +275,9 @@ class VerticalSliceRunner {
         },
         detail: (result) => '发现 seq=$backupSeq 的提交',
       );
-      if (history == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (history == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final status = await step(
         title: '读取库状态（无需密码）',
@@ -277,7 +297,9 @@ class VerticalSliceRunner {
               'referenced=${value.referencedPacks}（未解锁，属预期）';
         },
       );
-      if (status == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (status == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final chain = await step(
         title: '链统计与锚点校验',
@@ -300,14 +322,17 @@ class VerticalSliceRunner {
               'missing=${value.missingPacks} verified=${value.verified}';
         },
       );
-      if (chain == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (chain == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final wrongPassword = await step(
         title: '错误密码探针',
         command: CoreCommand.log,
         withPassword: true,
         passwordValue: 'wrong-${_randomPassword()}',
-        accept: (result) => result.exitCode == 10 && result.stdout.trim().isEmpty,
+        accept: (result) =>
+            result.exitCode == 10 && result.stdout.trim().isEmpty,
         detail: (result) => 'exit=${result.exitCode}，stdout 为空；符合契约',
       );
       if (wrongPassword == null) {
@@ -336,7 +361,9 @@ class VerticalSliceRunner {
               'bytes=${summary.bytes}';
         },
       );
-      if (restore == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (restore == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final same = await _directoriesMatch(sourceDir, restoreDir);
       steps.add(
@@ -348,7 +375,9 @@ class VerticalSliceRunner {
         ),
       );
       log('${same ? '✓' : '✗'} 逐文件比对恢复结果 · ${same ? 'SHA-256 一致' : '内容不一致'}');
-      if (!same) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (!same) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final verify = await step(
         title: '抽样校验',
@@ -368,7 +397,9 @@ class VerticalSliceRunner {
               'missing=${summary.missing?.length ?? 0}';
         },
       );
-      if (verify == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (verify == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       final doctor = await step(
         title: 'doctor --chain 一致性自检',
@@ -386,15 +417,20 @@ class VerticalSliceRunner {
               checks.every((check) => !check.status.isBlocking);
         },
         detail: (result) {
-          final checks = result.jsonList
+          final checks =
+              result.jsonList
                   ?.map((item) => DoctorCheck.fromJson(asJsonMap(item)))
                   .toList() ??
               const <DoctorCheck>[];
-          final warning = checks.where((check) => check.status == DoctorStatus.warn).length;
+          final warning = checks
+              .where((check) => check.status == DoctorStatus.warn)
+              .length;
           return '${checks.length} 项检查，WARN=$warning，FAIL=0';
         },
       );
-      if (doctor == null) return _finish(false, steps, total, workDir, coreVersion, error, log);
+      if (doctor == null) {
+        return _finish(false, steps, total, workDir, coreVersion, error, log);
+      }
 
       return _finish(true, steps, total, workDir, coreVersion, error, log);
     } catch (caught) {
@@ -430,11 +466,13 @@ class VerticalSliceRunner {
         }
       }
     }
-    log(success
-        ? '✓ M0 垂直切片通过（${total.elapsed.inMilliseconds} ms）'
-        : cancelled
-        ? '■ M0 垂直切片已取消'
-        : '✗ M0 垂直切片失败${keptWorkDir == null ? '' : '，现场保留在 $keptWorkDir'}');
+    log(
+      success
+          ? '✓ M0 垂直切片通过（${total.elapsed.inMilliseconds} ms）'
+          : cancelled
+          ? '■ M0 垂直切片已取消'
+          : '✗ M0 垂直切片失败${keptWorkDir == null ? '' : '，现场保留在 $keptWorkDir'}',
+    );
     return VerticalSliceReport(
       success: success,
       cancelled: cancelled,
@@ -447,7 +485,8 @@ class VerticalSliceRunner {
   }
 
   Future<void> _writeFixtureFiles(Directory sourceDir) async {
-    await File(p.join(sourceDir.path, 'a.txt')).writeAsString('hello eimmortal\n');
+    await File(p.join(sourceDir.path, 'a.txt'))
+        .writeAsString('hello eimmortal\n');
     await File(p.join(sourceDir.path, 'sub', 'b.txt'))
         .writeAsString('desktop client vertical slice\n');
     final random = Random.secure();

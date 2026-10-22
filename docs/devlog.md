@@ -5,6 +5,111 @@
 
 ---
 
+## 2026-10-22 21:20 · 参数设置：初始化向导 + 设置页全参数
+
+### 目标
+
+1. 创建/加入库的初始化流程增加“参数设置”步骤，明确分为普通参数和高级参数。
+2. 应用内的设置页可查看/修改全部**当前版本实际生效**的 sidecar 参数，并真正写入 `config.toml`。
+
+### 一、配置模型
+
+新增 `lib/core/vault_settings.dart`：
+
+- 普通参数：`session_max_mib`、`zstd_level`、`scan.mode`、`scan.exclude`。
+- 高级参数：`pack_max_bytes`、`slice_plain_bytes`、`small_file_bytes`、`min_compress_bytes`、
+  `staging_dir`、`ignore_xattr`、`sparse_max_bytes`、`follow_hardlinks`、`on_change_during_read.strategy`。
+- 大尺寸在 UI 用 MiB/KiB，写 TOML 时换算为字节；校验包含 `slice+50B ≤ pack`、`small+50B ≤ pack`、
+  slice ≤ 64 MiB、zstd 1..22、路径必须是绝对路径/`~/` 等跨字段规则。
+- 不暴露上游未实现字段（`concurrency.hashers`、`checkpoint.*`、`verify.auto_strict_every`），避免设置看似生效。
+
+`VaultConfig` 现在写出完整配置段：
+
+```toml
+[storage]
+target_dir = "…"
+staging_dir = "…"          # 可空
+pack_max_bytes = 134217728
+slice_plain_bytes = 33554432
+small_file_bytes = 67108864
+session_max_mib = 1024
+
+[codec]
+zstd_level = 5
+min_compress_bytes = 4096
+
+[scan]
+mode = "fast"
+exclude = [".git/**", "node_modules/**", "*.tmp", ".DS_Store"]
+follow_hardlinks = "error"
+ignore_xattr = true
+sparse_max_bytes = 0
+
+[on_change_during_read]
+strategy = "retry"
+```
+
+`profile.json` 增加嵌套 `settings`，同时继续写旧的 `session_max_mib`/`ignore_xattr` 字段；旧 profile
+没有 `settings` 时自动按扁平字段迁移。`TargetDir`、应用控制平面目录、源根目录仍固定，不提供修改入口。
+
+### 二、初始化向导
+
+- 创建/加入流程由 3 步扩展为 4 步：选择目录 → 主密码 / Key → **参数设置** → 确认。
+- 参数设置页复用 `VaultSettingsForm`：普通参数直接展开；高级参数用可折叠区，默认收起。
+- 高级区包含 pack/slice/small、最小压缩阈值、暂存目录选择器、xattr、稀疏文件、硬链接和读取中变化策略。
+- 确认页显示参数摘要（会话上限、zstd、扫描模式、排除条数、pack/slice/small）。
+- 参数在 `init`/`init --join` 之前写入 `config.toml`，因此首次命令就使用用户选择的参数。
+
+### 三、设置页
+
+- 设置页新增“备份参数”卡片，放在“当前库”之后，使用同一个表单；保存按钮写入 config+profile。
+- 保存前做跨字段校验；命令运行中禁用编辑/保存；失败显示错误横幅。
+- 结构性参数（pack/slice/small_file）变更时二次确认“只影响后续提交，已有快照仍可读”。
+- 在 macOS 上关闭 `ignore_xattr` 时二次确认 E21 风险。
+- 保存后立即更新内存中的 profile/session，下一次 sidecar 命令生效；不需要重启应用。
+
+### 四、验证
+
+```text
+flutter analyze                         No issues found
+flutter test                            72 passed, 3 skipped（integration 默认跳过）
+真实 sidecar integration                3 passed
+  - 自定义参数创建（pack 64 MiB / slice 8 MiB / zstd 9 / strict / split / skip）
+  - 更新全部参数后 config.toml 断言
+  - refreshPreviewStatus 确认 sidecar 接受新配置
+
+flutter build macos --debug             成功；Debug/Profile sidecar 注入
+flutter build macos --release           53.7 MB
+tool/verify_bundle.dart                 source=bundle, integrity: verified（core v0.1.5）
+```
+
+新增测试：
+
+- `test/core/vault_settings_test.dart`：默认值、边界、跨字段约束、JSON 往返、legacy 扁平迁移。
+- `test/core/vault_config_test.dart`：全部 TOML 字段、空 exclude、非法参数、0600。
+- `test/app/vault_settings_form_test.dart`：普通/高级分组、字段读取、校验横幅、恢复推荐值。
+- `test/app/onboarding_screen_test.dart`：通过 fake directory selector 走完目录→密码→参数→确认四步。
+- `test/core/profile_test.dart`：完整 settings 往返与旧 profile 迁移。
+
+截图：[初始化参数（深色）](assets/m1-onboarding-params.jpg)、[初始化参数（浅色）](assets/m1-onboarding-params-light.jpg)、
+[设置参数（深色）](assets/m1-settings-params.jpg)、[设置参数（浅色）](assets/m1-settings-params-light.jpg)。
+
+### 五、取舍 / 风险
+
+- 不提供 `TargetDir`、vault 目录修改；换 TargetDir/换源需要新建 profile。
+- 暂存目录只做绝对路径校验，是否与 TargetDir 同卷由 sidecar 在命令启动时最终判定。
+- 结构性参数变更对已有快照的影响依赖上游“每次提交记录参数快照”的保证；界面已明确提示并二次确认。
+- 设置页仍是主窗口内页面，不是独立 Settings 窗口；侧边栏隐藏、Idle 自动锁定仍未做。
+- Windows 仍只做了代码路径与构建脚本，未在 Windows 宿主实测。
+
+### 六、下一步
+
+1. Windows 实机验证参数写入、暂存目录同卷与锁行为。
+2. 补齐配置文件导入/导出与“恢复默认参数”的显式审计记录。
+3. 将设置页拆为独立 macOS Settings 窗口，并补 Increase Contrast 变体。
+
+---
+
 ## 2026-10-22 01:25 · 修复 `flutter run` sidecar 注入 + Apple HIG 设计打磨
 
 ### 目标

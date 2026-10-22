@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'vault_settings.dart';
+
 enum ProfileMode {
   created,
   joined;
@@ -24,7 +26,7 @@ class ProfileFormatException implements Exception {
 
 /// GUI 的单一 profile。源根目录在这里固定下来：同一个 TargetDir 不允许换源根。
 class Profile {
-  const Profile({
+  Profile({
     required this.id,
     required this.name,
     required this.vaultDir,
@@ -33,10 +35,14 @@ class Profile {
     required this.sourceRoot,
     required this.mode,
     required this.createdAt,
-    this.sessionMaxMib = 1024,
-    this.ignoreXattr = true,
+    VaultSettings? settings,
+    int? sessionMaxMib,
+    bool? ignoreXattr,
     this.schema = currentSchema,
-  });
+  }) : settings = (settings ?? const VaultSettings()).copyWith(
+         sessionMaxMib: sessionMaxMib,
+         ignoreXattr: ignoreXattr,
+       );
 
   static const int currentSchema = 1;
 
@@ -49,8 +55,10 @@ class Profile {
   final String sourceRoot;
   final ProfileMode mode;
   final DateTime createdAt;
-  final int sessionMaxMib;
-  final bool ignoreXattr;
+  final VaultSettings settings;
+
+  int get sessionMaxMib => settings.sessionMaxMib;
+  bool get ignoreXattr => settings.ignoreXattr;
 
   Map<String, Object?> toJson() => {
     'schema': schema,
@@ -62,8 +70,10 @@ class Profile {
     'source_root': sourceRoot,
     'mode': mode.name,
     'created_at': createdAt.toUtc().toIso8601String(),
-    'session_max_mib': sessionMaxMib,
-    'ignore_xattr': ignoreXattr,
+    // 新格式；同时写 legacy 字段，便于旧版本/手工排查。
+    'settings': settings.toJson(),
+    'session_max_mib': settings.sessionMaxMib,
+    'ignore_xattr': settings.ignoreXattr,
   };
 
   factory Profile.fromJson(Map<String, Object?> json) {
@@ -103,7 +113,16 @@ class Profile {
       throw ProfileFormatException('profile.json 的 created_at 非法：$createdRaw');
     }
 
-    final maxMib = json['session_max_mib'];
+    final rawSettings = json['settings'];
+    final settings = rawSettings is Map
+        ? VaultSettings.fromJson(
+            rawSettings.map((key, value) => MapEntry('$key', value)),
+          )
+        : VaultSettings.fromJson(json);
+    final settingsError = settings.validate();
+    if (settingsError != null) {
+      throw ProfileFormatException('profile.json 参数非法：$settingsError');
+    }
     return Profile(
       schema: currentSchema,
       id: required('id'),
@@ -114,8 +133,7 @@ class Profile {
       sourceRoot: sourceRoot,
       mode: ProfileMode.parse(json['mode'] as String? ?? 'created'),
       createdAt: createdAt,
-      sessionMaxMib: maxMib is int && maxMib > 0 ? maxMib : 1024,
-      ignoreXattr: json['ignore_xattr'] != false,
+      settings: settings,
     );
   }
 
@@ -127,9 +145,14 @@ class Profile {
     String? sourceRoot,
     ProfileMode? mode,
     DateTime? createdAt,
+    VaultSettings? settings,
     int? sessionMaxMib,
     bool? ignoreXattr,
   }) {
+    final nextSettings = (settings ?? this.settings).copyWith(
+      sessionMaxMib: sessionMaxMib,
+      ignoreXattr: ignoreXattr,
+    );
     return Profile(
       schema: schema,
       id: id,
@@ -140,12 +163,12 @@ class Profile {
       sourceRoot: sourceRoot ?? this.sourceRoot,
       mode: mode ?? this.mode,
       createdAt: createdAt ?? this.createdAt,
-      sessionMaxMib: sessionMaxMib ?? this.sessionMaxMib,
-      ignoreXattr: ignoreXattr ?? this.ignoreXattr,
+      settings: nextSettings,
     );
   }
 
   bool get targetExists => Directory(targetDir).existsSync();
   bool get sourceExists => Directory(sourceRoot).existsSync();
-  bool get vaultInitialized => File(p.join(vaultDir, 'vault.meta')).existsSync();
+  bool get vaultInitialized =>
+      File(p.join(vaultDir, 'vault.meta')).existsSync();
 }

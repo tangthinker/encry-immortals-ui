@@ -1,4 +1,5 @@
 import 'package:encry_immortals_ui/core/profile.dart';
+import 'package:encry_immortals_ui/core/vault_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Profile _profile() {
@@ -54,6 +55,34 @@ void main() {
     expect(updated.sessionMaxMib, 1024);
     expect(updated.name, 'new');
     expect(updated.targetDir, profile.targetDir);
+  });
+
+  test('完整参数往返', () {
+    final profile = _profile();
+    final updated = profile.copyWith(
+      settings: const VaultSettings(
+        packMaxMiB: 256,
+        slicePlainMiB: 16,
+        smallFileMiB: 100,
+        zstdLevel: 9,
+        scanMode: 'strict',
+        excludeRules: ['*.tmp'],
+        ignoreXattr: false,
+        stagingDir: '/tmp/stage',
+      ),
+    );
+    final decoded = Profile.fromJson(updated.toJson());
+    expect(decoded.settings, updated.settings);
+    expect(decoded.settings.packMaxMiB, 256);
+    expect(decoded.ignoreXattr, isFalse);
+  });
+
+  test('旧版扁平 profile 自动迁移到 settings', () {
+    final json = _profile().toJson()..remove('settings');
+    final decoded = Profile.fromJson(json);
+    expect(decoded.sessionMaxMib, 512);
+    expect(decoded.ignoreXattr, isTrue);
+    expect(decoded.settings.packMaxMiB, 128);
   });
 
   test('mode 解析未知值回退为 created', () {

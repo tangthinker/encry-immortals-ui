@@ -11,12 +11,18 @@ import '../../window_title.dart';
 import '../../../core/core_models.dart';
 import '../../../core/onboarding_service.dart';
 import '../../../core/profile.dart';
+import '../../../core/vault_settings.dart';
 import '../../theme.dart';
 import '../../widgets/app_mark.dart';
 import '../../widgets/log_panel.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/vault_settings_form.dart';
 
 enum _Mode { choice, create, join, createSuccess, joinSuccess }
+
+VaultSettings _defaultOnboardingSettings() {
+  return VaultSettings(ignoreXattr: Platform.isMacOS);
+}
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({required this.controller, super.key});
@@ -30,6 +36,9 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   _Mode _mode = _Mode.choice;
   int _step = 0;
+  VaultSettings _settings = _defaultOnboardingSettings();
+  GlobalKey<VaultSettingsFormState> _settingsKey =
+      GlobalKey<VaultSettingsFormState>();
 
   String? _sourceRoot;
   String? _targetDir;
@@ -90,6 +99,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _pendingPassword = null;
     _key = null;
     _keyConfirmed = false;
+    _settings = _defaultOnboardingSettings();
+    _settingsKey = GlobalKey<VaultSettingsFormState>();
   }
 
   Future<void> _pickDirectory({required bool source}) async {
@@ -169,9 +180,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _next() {
     if (_busy) return;
     final isJoin = _mode == _Mode.join;
-    final error = _step == 0
-        ? _directoryError(join: isJoin)
-        : _passwordError(requireConfirmation: !isJoin);
+    String? error;
+    if (_step == 0) {
+      error = _directoryError(join: isJoin);
+    } else if (_step == 1) {
+      error = _passwordError(requireConfirmation: !isJoin);
+    } else if (_step == 2) {
+      final form = _settingsKey.currentState;
+      final settings = form?.read() ?? _settings;
+      error = form?.validate() ?? settings.validate();
+      if (error == null) _settings = settings;
+    }
     if (error != null) {
       setState(() => _error = error);
       return;
@@ -211,6 +230,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       sourceRoot: source,
       targetDir: target,
       password: password,
+      settings: _settings,
       onLog: _appendLog,
       onStep: _appendStep,
     );
@@ -254,6 +274,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       targetDir: target,
       armorKey: armorKey,
       password: password,
+      settings: _settings,
       onLog: _appendLog,
       onStep: _appendStep,
     );
@@ -364,7 +385,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const AppMark(size: 48),
             const SizedBox(width: 14),
-             Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -391,7 +412,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ],
         ),
         const SizedBox(height: 36),
-         Text(
+        Text(
           '选择如何开始',
           style: TextStyle(
             fontSize: 30,
@@ -401,7 +422,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
         const SizedBox(height: 8),
-         Text(
+        Text(
           '新建一个库，或从另一台机器带来的 Armor Key 加入已有备份。'
           '同一个 TargetDir 只对应一个源根目录。',
           style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.muted),
@@ -444,15 +465,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ],
               );
             }
-            return Column(
-              children: [create, const SizedBox(height: 14), join],
-            );
+            return Column(children: [create, const SizedBox(height: 14), join]);
           },
         ),
         const SizedBox(height: 26),
-         NoticeBanner(
+        NoticeBanner(
           title: '安全提示',
-          message: '主密码不可更改；忘记密码将无法恢复。Armor Key 只包含盐与 KDF 参数，'
+          message:
+              '主密码不可更改；忘记密码将无法恢复。Armor Key 只包含盐与 KDF 参数，'
               '但仍应与主密码分开保存。应用不会把你的密码写入磁盘或日志。'
               'macOS 首次读取“桌面/文稿”等受保护目录时可能要求完全磁盘访问权限。',
           icon: Icons.shield_outlined,
@@ -462,7 +482,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SelectableText(
           'sidecar: ${widget.controller.runtime?.version ?? '不可用'} · '
           'app data: ${widget.controller.paths.root}',
-          style:  TextStyle(
+          style: TextStyle(
             fontFamily: 'Menlo',
             fontSize: 10.5,
             color: AppColors.faint,
@@ -474,8 +494,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildForm({required bool isJoin}) {
     final steps = isJoin
-        ? const ['选择目录', 'Armor Key 与密码', '加入']
-        : const ['选择目录', '设置主密码', '创建'];
+        ? const ['选择目录', '密码 / Key', '参数设置', '加入']
+        : const ['选择目录', '主密码', '参数设置', '创建'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -486,7 +506,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: Text(
                 isJoin ? '加入已有库' : '创建新库',
-                style:  TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -515,7 +535,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               if (_step == 0) _buildDirectoryStep(isJoin: isJoin),
               if (_step == 1) _buildCredentialStep(isJoin: isJoin),
-              if (_step == 2) _buildReviewStep(isJoin: isJoin),
+              if (_step == 2) _buildParameterStep(isJoin: isJoin),
+              if (_step == 3) _buildReviewStep(isJoin: isJoin),
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 NoticeBanner(
@@ -541,7 +562,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   alignment: Alignment.centerLeft,
                   child: TextButton(
                     onPressed: _resetLocal,
-                    child:  Text(
+                    child: Text(
                       '重置本地配置后重试',
                       style: TextStyle(color: AppColors.danger, fontSize: 12),
                     ),
@@ -581,7 +602,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         if (isJoin) ...[
           const SizedBox(height: 16),
-           NoticeBanner(
+          NoticeBanner(
             message: '加入前请确认 TargetDir 来自可信来源。应用不会在这里重新生成密钥。',
             color: AppColors.blue,
             icon: Icons.info_outline_rounded,
@@ -645,11 +666,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             decoration: const InputDecoration(hintText: '再次输入主密码'),
           ),
           const SizedBox(height: 16),
-          _PasswordChecklist(
-            password: _password.text,
-            confirm: _confirm.text,
-          ),
+          _PasswordChecklist(password: _password.text, confirm: _confirm.text),
         ],
+      ],
+    );
+  }
+
+  Widget _buildParameterStep({required bool isJoin}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '参数设置',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          isJoin
+              ? '加入后这些参数会写入本地 config.toml，只影响这台机器后续的备份/恢复操作。'
+              : '这些参数会写入本地 config.toml，之后可在“设置”中继续调整。',
+          style: TextStyle(fontSize: 11.5, height: 1.6, color: AppColors.faint),
+        ),
+        const SizedBox(height: 18),
+        VaultSettingsForm(
+          key: _settingsKey,
+          initial: _settings,
+          enabled: !_busy,
+          onChanged: (value) {
+            _settings = value;
+            if (_error != null) setState(() => _error = null);
+          },
+        ),
       ],
     );
   }
@@ -658,7 +709,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-         Text(
+        Text(
           '确认信息',
           style: TextStyle(
             fontSize: 16,
@@ -667,7 +718,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        InfoRow(label: '源目录', value: _sourceRoot ?? '—', mono: true, selectable: true),
+        InfoRow(
+          label: '源目录',
+          value: _sourceRoot ?? '—',
+          mono: true,
+          selectable: true,
+        ),
         const Divider(),
         InfoRow(
           label: 'TargetDir',
@@ -683,9 +739,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             valueColor: AppColors.accent,
           ),
         ],
+        const Divider(),
+        InfoRow(
+          label: '普通参数',
+          value:
+              '上限 ${_settings.sessionMaxMib} MiB · zstd ${_settings.zstdLevel} · '
+              '${_settings.scanModeLabel} · 排除 ${_settings.excludeRules.length} 条',
+        ),
+        const Divider(),
+        InfoRow(
+          label: '高级参数',
+          value:
+              'pack ${_settings.packMaxMiB} MiB · slice ${_settings.slicePlainMiB} MiB · '
+              'small ${_settings.smallFileMiB} MiB',
+        ),
         const SizedBox(height: 16),
-         NoticeBanner(
-          message: '开始后会在本地应用数据目录创建控制平面。失败会自动清理本地控制平面，'
+        NoticeBanner(
+          message:
+              '开始后会在本地应用数据目录创建控制平面。失败会自动清理本地控制平面，'
               '不会删除 TargetDir 中的备份。',
           color: AppColors.amber,
           icon: Icons.warning_amber_rounded,
@@ -695,7 +766,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildNavButtons({required bool isJoin}) {
-    final isLast = _step == 2;
+    final isLast = _step == 3;
     return Row(
       children: [
         if (_step > 0)
@@ -705,10 +776,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         const Spacer(),
         if (!isLast)
-          FilledButton(
-            onPressed: _busy ? null : _next,
-            child: const Text('继续'),
-          )
+          FilledButton(onPressed: _busy ? null : _next, child: const Text('继续'))
         else
           FilledButton.icon(
             onPressed: _busy
@@ -717,7 +785,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ? _join
                 : _create,
             icon: _busy
-                ?  SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
@@ -751,7 +819,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const AppMark(size: 44),
             const SizedBox(width: 13),
-             Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -771,13 +839,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ],
               ),
             ),
-            StatusPill(label: 'vault.meta 已生成', color: AppColors.success, dense: true),
+            StatusPill(
+              label: 'vault.meta 已生成',
+              color: AppColors.success,
+              dense: true,
+            ),
           ],
         ),
         const SizedBox(height: 22),
         NoticeBanner(
           title: '先保存 Armor Key',
-          message: 'Armor Key 是你换机器或重装后恢复数据的唯一凭据。它包含盐与 KDF 参数，'
+          message:
+              'Armor Key 是你换机器或重装后恢复数据的唯一凭据。它包含盐与 KDF 参数，'
               '请与主密码分开存放。关闭此页面后仍可在设置中再次导出，但需要主密码。',
           color: AppColors.amber,
           icon: Icons.key_rounded,
@@ -793,7 +866,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-               Text(
+              Text(
                 '单行版',
                 style: TextStyle(
                   fontSize: 11,
@@ -804,7 +877,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 8),
               SelectableText(
                 key.armor,
-                style:  TextStyle(
+                style: TextStyle(
                   fontFamily: 'Menlo',
                   fontSize: 11.5,
                   height: 1.6,
@@ -836,11 +909,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           onChanged: (value) => setState(() => _keyConfirmed = value ?? false),
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: EdgeInsets.zero,
-          title:  Text(
+          title: Text(
             '我已把 Armor Key 保存到密码管理器或离线位置',
             style: TextStyle(fontSize: 12.5, color: AppColors.text),
           ),
-          subtitle:  Text(
+          subtitle: Text(
             '没有 Armor Key，重装或换机后无法恢复数据。',
             style: TextStyle(fontSize: 11, color: AppColors.faint),
           ),
@@ -858,13 +931,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             Text(
               '${profile.sourceRoot} → ${profile.targetDir}',
-              style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
+              style: TextStyle(fontSize: 10.5, color: AppColors.faint),
             ),
             const Spacer(),
             FilledButton.icon(
               onPressed: _busy || !_keyConfirmed ? null : _activate,
               icon: _busy
-                  ?  SizedBox(
+                  ? SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
@@ -890,7 +963,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const AppMark(size: 44),
             const SizedBox(width: 13),
-             Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -910,7 +983,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ],
               ),
             ),
-             StatusPill(label: '链校验通过', color: AppColors.success, dense: true),
+            StatusPill(label: '链校验通过', color: AppColors.success, dense: true),
           ],
         ),
         const SizedBox(height: 22),
@@ -923,17 +996,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           child: Column(
             children: [
-              InfoRow(label: '源目录', value: profile.sourceRoot, mono: true, selectable: true),
+              InfoRow(
+                label: '源目录',
+                value: profile.sourceRoot,
+                mono: true,
+                selectable: true,
+              ),
               const Divider(),
-              InfoRow(label: 'TargetDir', value: profile.targetDir, mono: true, selectable: true),
+              InfoRow(
+                label: 'TargetDir',
+                value: profile.targetDir,
+                mono: true,
+                selectable: true,
+              ),
               const Divider(),
-              InfoRow(label: '本地控制平面', value: profile.vaultDir, mono: true, selectable: true),
+              InfoRow(
+                label: '本地控制平面',
+                value: profile.vaultDir,
+                mono: true,
+                selectable: true,
+              ),
             ],
           ),
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
-          NoticeBanner(title: '进入应用失败', message: _error!, color: AppColors.danger),
+          NoticeBanner(
+            title: '进入应用失败',
+            message: _error!,
+            color: AppColors.danger,
+          ),
         ],
         const SizedBox(height: 20),
         Align(
@@ -941,7 +1033,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: FilledButton.icon(
             onPressed: _busy ? null : _activate,
             icon: _busy
-                ?  SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
@@ -960,9 +1052,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _copy(String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制到剪贴板；注意云剪贴板/输入法可能记录。')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('已复制到剪贴板；注意云剪贴板/输入法可能记录。')));
   }
 }
 
@@ -1014,7 +1105,7 @@ class _ChoiceCard extends StatelessWidget {
               const SizedBox(height: 18),
               Text(
                 title,
-                style:  TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -1023,7 +1114,7 @@ class _ChoiceCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 description,
-                style:  TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   height: 1.6,
                   color: AppColors.muted,
@@ -1041,7 +1132,7 @@ class _ChoiceCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           bullet,
-                          style:  TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
                             height: 1.5,
                             color: AppColors.faint,
@@ -1104,7 +1195,9 @@ class _StepHeader extends StatelessWidget {
                       : AppColors.surfaceRaised,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: index <= current ? AppColors.accent : AppColors.border,
+                    color: index <= current
+                        ? AppColors.accent
+                        : AppColors.border,
                   ),
                 ),
                 child: Center(
@@ -1125,7 +1218,9 @@ class _StepHeader extends StatelessWidget {
                 steps[index],
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: index == current ? FontWeight.w600 : FontWeight.w400,
+                  fontWeight: index == current
+                      ? FontWeight.w600
+                      : FontWeight.w400,
                   color: index <= current ? AppColors.text : AppColors.faint,
                 ),
               ),
@@ -1152,17 +1247,14 @@ class _FieldLabel extends StatelessWidget {
         children: [
           Text(
             label,
-            style:  TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
             ),
           ),
           const SizedBox(height: 3),
-          Text(
-            help,
-            style:  TextStyle(fontSize: 11, color: AppColors.faint),
-          ),
+          Text(help, style: TextStyle(fontSize: 11, color: AppColors.faint)),
         ],
       ),
     );
@@ -1194,9 +1286,7 @@ class _PathPicker extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            value == null
-                ? Icons.folder_outlined
-                : Icons.folder_rounded,
+            value == null ? Icons.folder_outlined : Icons.folder_rounded,
             size: 17,
             color: value == null ? AppColors.faint : AppColors.accent,
           ),
@@ -1302,7 +1392,9 @@ class _ProgressPanel extends StatelessWidget {
                 )
               else
                 Icon(
-                  error == null ? Icons.check_circle_rounded : Icons.error_outline,
+                  error == null
+                      ? Icons.check_circle_rounded
+                      : Icons.error_outline,
                   size: 15,
                   color: error == null ? AppColors.success : AppColors.danger,
                 ),
@@ -1314,7 +1406,7 @@ class _ProgressPanel extends StatelessWidget {
                       : error == null
                       ? '完成'
                       : '已停止',
-                  style:  TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.text,
@@ -1322,10 +1414,7 @@ class _ProgressPanel extends StatelessWidget {
                 ),
               ),
               if (onCancel != null)
-                TextButton(
-                  onPressed: onCancel,
-                  child: const Text('取消'),
-                ),
+                TextButton(onPressed: onCancel, child: const Text('取消')),
             ],
           ),
           if (steps.isNotEmpty) ...[
