@@ -5,6 +5,62 @@
 
 ---
 
+## 2026-10-22 22:40 · 侧边栏锁定/设置 tab + 默认浅色主题
+
+### 目标
+
+1. 侧边栏顶部三个点改成直接的锁定按钮。
+2. 设置从顶部菜单移回侧边栏，作为第六个 tab。
+3. 应用默认浅色主题；设置页可切换“浅色 / 跟随系统 / 深色”。
+
+### 操作
+
+- 侧边栏顶部 `PopupMenuButton` 替换为 `IconButton`（`lock_outline`）：
+  - 命令运行时禁用，tooltip 说明“命令运行中，暂不能锁定”；
+  - 不再承载设置入口，减少“更多”菜单的隐藏操作。
+- 设置作为 `_NavItem` 加回侧边栏（概览/备份/历史/恢复/校验/设置），选中有高亮；
+  - 应用菜单 `⌘,`、`Ctrl+,` 仍保留，作为桌面惯例入口；
+  - 窗口标题仍随 tab 变化。
+- 新增 `AppThemeMode { light, system, dark }` 和 `AppPreferencesStore`：
+  - 偏好落在应用数据目录 `preferences.json`（0600），独立于 vault profile；
+  - 缺少/损坏文件回退浅色；移除本地 vault 配置不会重置主题；
+  - `AppController` 默认 `light`，initialize 时加载偏好；`setThemeMode` 先更新内存再持久化，失败回滚。
+- `EncryImmortalsApp` 监听 controller 与系统亮度：
+  - 浅色/深色固定；
+  - 跟随系统时监听 `didChangePlatformBrightness`；
+  - 切换后立即重建主题，State 保留。
+- 设置页新增“外观”卡片：
+  - 三段式 SegmentedButton：浅色 / 跟随系统 / 深色；
+  - 当前状态提示（浅色默认）；
+  - 保存失败显示错误横幅；命令运行中暂时禁用切换。
+- 默认浅色意味着首次启动、onboarding、解锁页都直接是浅色，除非用户保存过偏好。
+
+### 验证
+
+```text
+flutter analyze                 No issues found
+flutter test                    77 passed, 3 skipped
+flutter build macos --debug     成功
+flutter build macos --release   成功；bundle integrity: verified
+```
+
+新增测试：
+
+- `test/core/app_preferences_test.dart`：默认浅色、持久化/0600、损坏回退。
+- `test/app/app_controller_test.dart`：默认浅色、跨 controller 持久化。
+- `test/app/theme_mode_test.dart`：默认浅色、切深色、跟随系统随平台亮度变化。
+
+截图：新侧边栏锁定按钮/设置 tab、外观卡片，见 [dashboard](assets/m1-dashboard.jpg)、
+[dashboard 浅色](assets/m1-dashboard-light.jpg)、[settings 浅色](assets/m1-settings-light.jpg)。
+
+### 已知取舍
+
+- macOS 原生标题栏由系统外观决定，不会跟随应用内“固定深色/浅色”；这是系统窗口框架的限制。
+- 设置 tab 与应用菜单设置入口同时存在，分别服务发现性和快捷键习惯。
+- 主题偏好是应用级，不随 vault profile 切换；单 profile 场景下没有歧义。
+
+---
+
 ## 2026-10-22 22:35 · 界面内统一使用新图标
 
 ### 目标

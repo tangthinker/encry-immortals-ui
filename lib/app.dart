@@ -8,6 +8,7 @@ import 'app/screens/onboarding/onboarding_screen.dart';
 import 'app/screens/startup_screen.dart';
 import 'app/screens/unlock_screen.dart';
 import 'app/theme.dart';
+import 'core/app_preferences.dart';
 
 class EncryImmortalsApp extends StatefulWidget {
   const EncryImmortalsApp({
@@ -25,30 +26,49 @@ class EncryImmortalsApp extends StatefulWidget {
 
 class _EncryImmortalsAppState extends State<EncryImmortalsApp>
     with WidgetsBindingObserver {
-  late Brightness _brightness;
+  late Brightness _platformBrightness;
+  late AppThemeMode _themeMode;
 
   @override
   void initState() {
     super.initState();
-    _brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    _platformBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    _themeMode = widget.controller.themeMode;
+    widget.controller.addListener(_onControllerChanged);
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    final next = widget.controller.themeMode;
+    if (next == _themeMode) return;
+    setState(() => _themeMode = next);
   }
 
   @override
   void didChangePlatformBrightness() {
     final next = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    if (next != _brightness) setState(() => _brightness = next);
+    if (next != _platformBrightness) {
+      setState(() => _platformBrightness = next);
+    }
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    AppColors.apply(_brightness);
+    final brightness = switch (_themeMode) {
+      AppThemeMode.light => Brightness.light,
+      AppThemeMode.dark => Brightness.dark,
+      AppThemeMode.system => _platformBrightness,
+    };
+    AppColors.apply(brightness);
     return MaterialApp(
       navigatorKey: widget.navigatorKey,
       title: appName,

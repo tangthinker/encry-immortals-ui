@@ -55,6 +55,7 @@ class AppPaths {
   String get configFile => p.join(root, 'config.toml');
   String get vaultDir => p.join(root, 'vault');
   String get instanceLockFile => p.join(root, 'instance.lock');
+  String get preferencesFile => p.join(root, 'preferences.json');
 
   Directory get directory => Directory(root);
   Directory get vaultDirectory => Directory(vaultDir);

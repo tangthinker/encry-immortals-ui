@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../app_controller.dart';
 import '../app_info.dart' as info;
+import '../../core/app_preferences.dart';
 import '../../core/core_locator.dart';
 import '../../core/core_models.dart';
 import '../../core/lock_inspector.dart';
@@ -30,8 +31,10 @@ class _SettingsPageState extends State<SettingsPage> {
   late VaultSettings _settings;
   late GlobalKey<VaultSettingsFormState> _settingsKey;
   bool _saving = false;
+  bool _savingTheme = false;
   bool _checkingLocks = false;
   String? _saveError;
+  String? _themeError;
 
   @override
   void initState() {
@@ -119,6 +122,43 @@ class _SettingsPageState extends State<SettingsPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _setThemeMode(AppThemeMode mode) async {
+    if (_savingTheme || widget.controller.themeMode == mode) return;
+    setState(() {
+      _savingTheme = true;
+      _themeError = null;
+    });
+    try {
+      await widget.controller.setThemeMode(mode);
+    } catch (error) {
+      if (mounted) setState(() => _themeError = '$error');
+    } finally {
+      if (mounted) setState(() => _savingTheme = false);
+    }
+  }
+
+  ButtonStyle _themeSegmentStyle() {
+    return ButtonStyle(
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        return states.contains(WidgetState.selected)
+            ? AppColors.accent
+            : AppColors.surfaceRaised;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        return states.contains(WidgetState.selected)
+            ? AppColors.onAccent
+            : AppColors.text;
+      }),
+      overlayColor: WidgetStatePropertyAll(
+        AppColors.accent.withValues(alpha: 0.12),
+      ),
+      side: WidgetStatePropertyAll(BorderSide(color: AppColors.border)),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   Future<void> _diagnoseLocks() async {
@@ -305,6 +345,57 @@ class _SettingsPageState extends State<SettingsPage> {
                               0,
                               19,
                             ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SectionCard(
+                title: '外观',
+                subtitle: '默认浅色；切换后立即保存，下次启动继续使用',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SegmentedButton<AppThemeMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: AppThemeMode.light,
+                          label: Text('浅色'),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeMode.system,
+                          label: Text('跟随系统'),
+                        ),
+                        ButtonSegment(
+                          value: AppThemeMode.dark,
+                          label: Text('深色'),
+                        ),
+                      ],
+                      selected: {widget.controller.themeMode},
+                      showSelectedIcon: false,
+                      style: _themeSegmentStyle(),
+                      onSelectionChanged: _savingTheme || busy
+                          ? null
+                          : (values) => _setThemeMode(values.first),
+                    ),
+                    if (_themeError != null) ...[
+                      const SizedBox(height: 12),
+                      NoticeBanner(
+                        title: '外观未保存',
+                        message: _themeError!,
+                        color: AppColors.danger,
+                        icon: Icons.error_outline_rounded,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.controller.themeMode == AppThemeMode.system
+                          ? '当前跟随系统外观；系统切换时立即更新。'
+                          : '当前固定${widget.controller.themeMode.label}${widget.controller.themeMode == AppThemeMode.light ? '（默认）' : ''}。',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: AppColors.faint,
+                      ),
                     ),
                   ],
                 ),

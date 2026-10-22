@@ -3,7 +3,7 @@
 [`encry-immortals`](https://github.com/tangthinker/encry-immortals)（eimmortal）的桌面客户端，目标平台 **macOS 12+ / Windows 10+**。
 
 > 状态：**M1 MVP + 参数设置 + Apple HIG 设计打磨**（2026-10-22）。创建/加入库、解锁、仪表盘、备份、历史、恢复、校验、设置与 Key 导出均已可用；
-> 遵循 macOS 系统浅色/深色外观，提供原生菜单栏与快捷键；release sidecar 固定 SHA-256 并验证。
+> 默认浅色，可在设置中切换跟随系统/深色；提供原生菜单栏与快捷键；release sidecar 固定 SHA-256 并验证。
 > Windows 构建脚本已提供但尚未在 Windows 宿主实测；Developer ID 公证与 Authenticode 签名仍属于发布阶段工作。
 >
 > 技术结论见 [技术选型](docs/tech-selection.md)，进程与 JSON 契约见 [集成契约](docs/integration-contract.md)，
@@ -35,18 +35,18 @@
 | 历史 | `log` 提交列表、`show` 变更明细、`ls --at` 文件树与按路径过滤 |
 | 恢复 | 强制 `doctor --chain` 预检 → `restore --list-packs` 检查缺失 → 覆盖策略 → `--dry-run` 或正式恢复；支持跳过缺失 pack / 等待同步 |
 | 校验 | `verify --sample N` / `--deep` 与 `doctor --chain`，展示 PASS/WARN/FAIL、缺失/损坏/抽样失败 |
-| 设置 | 查看 profile/路径/核心完整性；编辑全部已实现参数（普通/高级）；重新验证密码后导出 Armor Key；写锁诊断；立即锁定；移除本地配置 |
+| 设置 | 查看 profile/路径/核心完整性；编辑全部已实现参数（普通/高级）；切换外观（浅色/跟随系统/深色，默认浅色）；重新验证密码后导出 Armor Key；写锁诊断；立即锁定；移除本地配置 |
 | 应用保护 | 单实例文件锁；关闭窗口时若命令仍在运行会阻止退出并确认取消；全命令串行队列 |
-| 桌面体验 | 原生菜单栏（应用/文件/编辑/显示/操作/窗口/帮助）、⌘1–5/⌘⇧B/⌘, 等快捷键、内容化窗口标题、侧边栏顶部更多菜单 |
+| 桌面体验 | 原生菜单栏（应用/文件/编辑/显示/操作/窗口/帮助）、⌘1–5/⌘⇧B/⌘, 等快捷键、内容化窗口标题、侧边栏顶部锁定按钮与设置 tab |
 
-界面**不使用任何渐变**，跟随系统浅色/深色外观；不包含截图/自动自检等调试功能。
+界面**不使用任何渐变**，默认浅色，可在设置页切换为跟随系统或固定深色；不包含截图/自动自检等调试功能。
 
 ## 设计语言
 
 - **方向**：把“锚点/封印”作为产品的签名元素——仪表盘健康卡展示由 `status --chain` 数据驱动的 `ChainSeal`，
   不是装饰性插画。
 - **色彩**：深色为暖墨底 + 黄铜主操作 + 绿色“已验证 + 琥珀警告 + 红色危险；浅色为羊皮纸底 + 更深的黄铜/绿色。
-  颜色均为语义角色，不硬编码系统色；系统外观切换即跟随，没有应用内主题开关。
+  颜色均为语义角色，不硬编码系统色；默认浅色，设置页可切换浅色/跟随系统/深色，选择持久化到 `preferences.json`。
 - **对比度**：文字/状态色在背景与卡片表面的 WCAG AA 对比度由 `test/app/theme_contrast_test.dart` 强制校验
   （小字号要求 ≥ 4.5:1）。
 - **层级**：系统字体负责导航/控件，Menlo 负责路径、hash、seq；桌面最小字号 10pt；控件保持 macOS 的紧凑命中区。
@@ -115,7 +115,7 @@ Debug 构建的 Xcode phase（`tool/xcode_debug_sidecar.sh`）会从 submodule �
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                         # 72 个单元/组件测试，不需要 sidecar
+flutter --no-version-check test                         # 77 个单元/组件测试，不需要 sidecar
 flutter --no-version-check test test/core test/app      # 只跑非集成测试
 
 # 真实链路：创建 → 备份 → 历史 → 恢复 → 校验 → 加入库

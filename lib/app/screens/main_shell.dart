@@ -366,7 +366,6 @@ class _MainShellState extends State<MainShell> {
                   busy: busy,
                   onSelect: _navigate,
                   onLock: _lock,
-                  onSettings: () => _navigate(5),
                 ),
                 Expanded(
                   child: Column(
@@ -452,7 +451,6 @@ class _Sidebar extends StatelessWidget {
     required this.busy,
     required this.onSelect,
     required this.onLock,
-    required this.onSettings,
   });
 
   final AppController controller;
@@ -460,7 +458,6 @@ class _Sidebar extends StatelessWidget {
   final bool busy;
   final ValueChanged<int> onSelect;
   final VoidCallback onLock;
-  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -508,30 +505,16 @@ class _Sidebar extends StatelessWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: '更多',
+                IconButton(
+                  tooltip: busy ? '命令运行中，暂不能锁定' : '锁定',
+                  onPressed: busy ? null : onLock,
                   padding: EdgeInsets.zero,
+                  iconSize: 18,
+                  visualDensity: VisualDensity.compact,
                   icon: Icon(
-                    Icons.more_horiz_rounded,
-                    size: 18,
+                    Icons.lock_outline_rounded,
                     color: AppColors.muted,
                   ),
-                  color: AppColors.surfaceRaised,
-                  onSelected: (value) {
-                    if (value == 'lock' && !busy) onLock();
-                    if (value == 'settings') onSettings();
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'lock',
-                      enabled: !busy,
-                      child: const Text('锁定'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'settings',
-                      child: Text('设置…'),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -572,6 +555,13 @@ class _Sidebar extends StatelessWidget {
             selectedIcon: Icons.verified_rounded,
             label: '校验',
             onTap: () => onSelect(4),
+          ),
+          _NavItem(
+            selected: index == 5,
+            icon: Icons.settings_outlined,
+            selectedIcon: Icons.settings_rounded,
+            label: '设置',
+            onTap: () => onSelect(5),
           ),
           const Spacer(),
           Padding(

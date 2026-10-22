@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:encry_immortals_ui/app/app_controller.dart';
 import 'package:encry_immortals_ui/core/app_paths.dart';
+import 'package:encry_immortals_ui/core/app_preferences.dart';
 import 'package:encry_immortals_ui/core/core_gateway.dart';
 import 'package:encry_immortals_ui/core/core_locator.dart';
 import 'package:encry_immortals_ui/core/core_runtime.dart';
@@ -71,6 +72,33 @@ void main() {
     await controller.initialize();
     expect(controller.phase, AppPhase.failed);
     expect(controller.startupError, contains('sidecar'));
+  });
+
+  test('主题默认浅色，修改后跨控制器保留', () async {
+    final first = AppController(
+      paths: paths,
+      profileStore: ProfileStore(paths),
+      runtimeLoader: () async => fakeRuntime(),
+      acquireInstanceLock: false,
+    );
+    await first.initialize();
+    expect(first.themeMode, AppThemeMode.light);
+    await first.setThemeMode(AppThemeMode.dark);
+    expect(first.themeMode, AppThemeMode.dark);
+    expect(File(paths.preferencesFile).existsSync(), isTrue);
+    first.dispose();
+
+    final second = AppController(
+      paths: paths,
+      profileStore: ProfileStore(paths),
+      runtimeLoader: () async => fakeRuntime(),
+      acquireInstanceLock: false,
+    );
+    addTearDown(second.dispose);
+    await second.initialize();
+    expect(second.themeMode, AppThemeMode.dark);
+    await second.setThemeMode(AppThemeMode.system);
+    expect(second.themeMode, AppThemeMode.system);
   });
 
   test('重置本地配置回到 onboarding', () async {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../core/app_paths.dart';
+import '../core/app_preferences.dart';
 import '../core/command_queue.dart';
 import '../core/core_exit_code.dart';
 import '../core/core_models.dart';
@@ -33,12 +34,14 @@ class AppController extends ChangeNotifier {
   AppController({
     required this.paths,
     required this.profileStore,
+    AppPreferencesStore? preferencesStore,
     CommandQueue? queue,
     CoreRuntimeLoader? runtimeLoader,
     this.platform = const PlatformService(),
     bool acquireInstanceLock = true,
     bool allowEnvironmentOverride = kDebugMode,
-  }) : queue = queue ?? CommandQueue(),
+  }) : preferencesStore = preferencesStore ?? AppPreferencesStore(paths),
+       queue = queue ?? CommandQueue(),
        // ignore: prefer_initializing_formals
        _runtimeLoader = runtimeLoader,
        // ignore: prefer_initializing_formals
@@ -48,6 +51,7 @@ class AppController extends ChangeNotifier {
 
   final AppPaths paths;
   final ProfileStore profileStore;
+  final AppPreferencesStore preferencesStore;
   final CommandQueue queue;
   final PlatformService platform;
 
@@ -69,6 +73,7 @@ class AppController extends ChangeNotifier {
   int _dataRevision = 0;
   int _refreshRevision = 0;
   InstanceLock? _instanceLock;
+  AppThemeMode _themeMode = AppThemeMode.light;
 
   AppPhase get phase => _phase;
   CoreRuntime? get runtime => _runtime;
@@ -82,6 +87,7 @@ class AppController extends ChangeNotifier {
   bool get unlocking => _unlocking;
   int get dataRevision => _dataRevision;
   int get refreshRevision => _refreshRevision;
+  AppThemeMode get themeMode => _themeMode;
   bool get isBusy => queue.isBusy;
   bool get hasInstanceLock => _instanceLock != null;
 
@@ -95,6 +101,7 @@ class AppController extends ChangeNotifier {
     _notify();
     try {
       await paths.ensure();
+      _themeMode = (await preferencesStore.load()).themeMode;
       if (_acquireInstanceLock && _instanceLock == null) {
         _instanceLock = await InstanceLock.acquire(paths.instanceLockFile);
         if (_instanceLock == null) {
@@ -342,6 +349,20 @@ class AppController extends ChangeNotifier {
       }
     } catch (_) {
       _previewStatus = null;
+    }
+  }
+
+  Future<void> setThemeMode(AppThemeMode mode) async {
+    if (_themeMode == mode) return;
+    final previous = _themeMode;
+    _themeMode = mode;
+    _notify();
+    try {
+      await preferencesStore.save(AppPreferences(themeMode: mode));
+    } catch (error) {
+      _themeMode = previous;
+      _notify();
+      throw StateError('无法保存外观设置：$error');
     }
   }
 
