@@ -14,7 +14,7 @@ env:
 
 jobs:
   macos:
-    name: Build macOS app
+    name: Build macOS universal
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -53,22 +53,24 @@ jobs:
       - name: Unit and widget tests
         run: flutter --no-version-check test
 
-      - name: Build signed release app
+      - name: Build signed universal app
         run: ./tool/build_macos.sh
 
-      - name: Verify bundle
+      - name: Verify bundle and architectures
         run: |
           set -euo pipefail
-          dart run tool/verify_bundle.dart \
-            "build/macos/Build/Products/Release/Encry Immortals.app" \
-            "$(cat build/core/eimmortal.sha256)"
+          APP="build/macos/Build/Products/Release/Encry Immortals.app"
+          dart run tool/verify_bundle.dart "$APP" "$(cat build/core/eimmortal.sha256)"
+          lipo -verify_arch arm64 "$APP/Contents/Resources/bin/eimmortal"
+          lipo -verify_arch x86_64 "$APP/Contents/Resources/bin/eimmortal"
+          lipo -verify_arch arm64 "$APP/Contents/MacOS/Encry Immortals"
+          lipo -verify_arch x86_64 "$APP/Contents/MacOS/Encry Immortals"
 
       - name: Package zip and dmg
         run: |
           set -euo pipefail
           APP="build/macos/Build/Products/Release/Encry Immortals.app"
-          ARCH="$(uname -m)"
-          BASE="Encry-Immortals-${GITHUB_REF_NAME}-macOS-${ARCH}"
+          BASE="Encry-Immortals-${GITHUB_REF_NAME}-macOS-universal"
 
           ditto -c -k --sequesterRsrc --keepParent "$APP" "${BASE}.zip"
 
@@ -83,7 +85,7 @@ jobs:
 
           ls -lh "${BASE}.zip" "${BASE}.dmg"
 
-      - name: Upload release artifacts
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-release
@@ -93,9 +95,105 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  windows:
+    name: Build Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: third_party/encry-immortals/go.sum
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Toolchain versions
+        shell: pwsh
+        run: |
+          flutter --version
+          go version
+          cmake --version
+
+      - name: Install dependencies
+        run: flutter --no-version-check pub get
+
+      - name: Analyze
+        run: flutter --no-version-check analyze
+
+      - name: Build Windows app and sidecar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          .\tool\build_windows.ps1
+          $appDir = "build\windows\x64\runner\Release"
+          if (!(Test-Path "$appDir\encry_immortals_ui.exe")) {
+            throw "missing app executable at $appDir\encry_immortals_ui.exe"
+          }
+          if (!(Test-Path "$appDir\bin\eimmortal-gui.exe")) {
+            throw "missing sidecar at $appDir\bin\eimmortal-gui.exe"
+          }
+          $core = Get-Content "$appDir\core-build.txt"
+          if ($core.Count -lt 2) { throw "core-build.txt is incomplete" }
+          $expected = $core[1].Trim().ToLower()
+          $actual = (Get-FileHash "$appDir\bin\eimmortal-gui.exe" -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            throw "bundled sidecar hash mismatch: $actual != $expected"
+          }
+          Write-Host "Windows app ready: $appDir"
+
+      - name: Build installer and portable zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $isccCandidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw "Inno Setup ISCC.exe not found" }
+          & $iscc "/DMyAppVersion=$version" "packaging\windows\encry-immortals.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+          $installer = "build\installer\Encry-Immortals-$version-Windows-x64.exe"
+          if (!(Test-Path $installer)) { throw "missing installer: $installer" }
+
+          $stage = "build\portable\Encry Immortals"
+          Remove-Item "build\portable" -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item "build\windows\x64\runner\Release\*" $stage -Recurse -Force
+          Compress-Archive -Path $stage `
+            -DestinationPath "build\installer\Encry-Immortals-$version-Windows-x64-portable.zip" `
+            -Force
+          Get-ChildItem "build\installer" | Format-Table Name,Length
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: build/installer/*
+          if-no-files-found: error
+          retention-days: 7
+
   release:
     name: Publish GitHub Release
-    needs: macos
+    needs: [macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -104,21 +202,41 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macos-release
-          path: dist
+          path: dist/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: dist/windows
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           name: Encry Immortals ${{ github.ref_name }}
-          generate_release_notes: true
-          append_body: |
-            ## macOS
+          body: |
+            ## Encry Immortals ${{ github.ref_name }}
 
-            - 构建：Flutter `3.47.5`，核心 `v0.1.5`，架构见产物文件名。
-            - 签名：ad-hoc。未做 Developer ID 公证；首次打开如被 Gatekeeper 阻止，请右键打开，或执行
-              `xattr -dr com.apple.quarantine "Encry Immortals.app"`。
-            - 测试：`flutter analyze`、86 个单元/组件测试、bundle 内 sidecar SHA-256 校验。
-          files: dist/*
+            ### macOS
+
+            - Universal app: Apple Silicon + Intel (`x86_64 arm64`).
+            - Universal sidecar, signed and hash-pinned at build time.
+            - Ad-hoc signed, **not notarized**. If Gatekeeper blocks the app, right-click → Open, or run:
+              `xattr -dr com.apple.quarantine "Encry Immortals.app"`.
+
+            ### Windows
+
+            - Windows x64 installer (Inno Setup) and portable zip.
+            - **Unsigned**; Authenticode signing is still on the roadmap.
+            - Windows GUI-subsystem stdio/control locks are exercised in CI but not yet validated on a physical Windows host.
+
+            ### Quality
+
+            - Flutter `3.47.5`, Go `1.27.1`, core `v0.1.5`.
+            - `flutter analyze`, 86 unit/widget tests, and sidecar SHA-256 verification.
+          files: |
+            dist/macos/*
+            dist/windows/*
           fail_on_unmatched_files: true
           draft: false
           prerelease: false

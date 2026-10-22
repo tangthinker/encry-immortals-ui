@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-10-22
 
 ### 功能
 
 - 定时备份：每天/每周/每月指定时间，或固定间隔；计划持久化，应用运行且解锁时执行。
+- macOS release 改为 x86_64 + arm64 universal 构建，sidecar 也通过 lipo 合并。
+- GitHub Actions 新增 Windows x64 构建、Inno Setup 安装包和 portable zip。
 
 ## 0.2.0 — 2026-10-22
 
