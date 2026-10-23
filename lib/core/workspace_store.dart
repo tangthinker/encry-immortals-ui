@@ -521,8 +521,11 @@ class WorkspaceStore {
   }
 
   String _safeId(String raw) {
-    final cleaned = raw.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '-');
-    if (cleaned.isEmpty) return _newId();
+    final cleaned = raw
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
+    if (cleaned.isEmpty || cleaned == '.' || cleaned == '..') return _newId();
     return cleaned;
   }
 }
