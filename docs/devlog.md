@@ -53,8 +53,15 @@ workspace_lifecycle_test（真实 core）    旧数据迁移 → 创建第二个
 
 ### 版本
 
-- `0.4.0+6`
-- 需要重新构建 universal / arm64 / Windows 包。
+- tag `v0.4.0`，commit `cc4611d`
+- [GitHub Release](https://github.com/tangthinker/encry-immortals-ui/releases/tag/v0.4.0)：
+  - `Encry-Immortals-v0.4.0-macOS-universal.dmg/.zip`
+  - `Encry-Immortals-v0.4.0-macOS-arm64.dmg/.zip`
+  - `Encry-Immortals-0.4.0-Windows-x64.exe` 与 portable zip
+- 下载 arm64 zip 复验：主程序 `arm64`、sidecar `arm64`、版本 `0.4.0`、
+  `codesign --verify --deep --strict` 通过。
+- 发布后 main 还包含 `fix: sanitize migrated workspace ids`（4caeb7f），用于防止异常旧
+  profile id 逃逸 `workspaces/<id>/`。
 
 ---
 
