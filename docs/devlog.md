@@ -17,7 +17,14 @@
 flutter test    102 passed, 5 integration skipped
 ```
 
-版本：`0.4.1+7`，需要重新构建三平台安装包。
+### 发布
+
+- tag `v0.4.1`，commit `596b0c1`
+- [GitHub Release](https://github.com/tangthinker/encry-immortals-ui/releases/tag/v0.4.1)：
+  - `Encry-Immortals-v0.4.1-macOS-universal.dmg/.zip`
+  - `Encry-Immortals-v0.4.1-macOS-arm64.dmg/.zip`
+  - `Encry-Immortals-0.4.1-Windows-x64.exe` 与 portable zip
+- CI 三平台构建、102 个测试和 sidecar SHA-256 校验均通过。
 
 ---
 
