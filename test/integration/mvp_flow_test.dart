@@ -230,7 +230,6 @@ void main() {
       final runtime = await CoreRuntime.load(allowEnvironmentOverride: true);
       final controller = AppController(
         paths: paths,
-        profileStore: ProfileStore(paths),
         runtimeLoader: () async => runtime,
         acquireInstanceLock: false,
       );
@@ -257,7 +256,8 @@ void main() {
       );
       expect(created.success, isTrue, reason: created.error);
       expect(created.profile!.settings.zstdLevel, 9);
-      final initialConfig = File(paths.configFile).readAsStringSync();
+      final initialConfig = File(controller.profileStore.paths.configFile)
+          .readAsStringSync();
       expect(initialConfig, contains('zstd_level = 9'));
       expect(initialConfig, contains('pack_max_bytes = 67108864'));
       expect(initialConfig, contains('strategy = "skip"'));
@@ -282,11 +282,12 @@ void main() {
           excludeRules: ['*.tmp', 'node_modules/**'],
         ),
       );
-      final profile = await ProfileStore(paths).load();
+      final profile = await controller.profileStore.load();
       expect(profile?.sessionMaxMib, 2048);
       expect(profile?.settings.zstdLevel, 3);
       expect(profile?.settings.packMaxMiB, 128);
-      final config = File(paths.configFile).readAsStringSync();
+      final config = File(controller.profileStore.paths.configFile)
+          .readAsStringSync();
       expect(config, contains('session_max_mib = 2048'));
       expect(config, contains('zstd_level = 3'));
       expect(config, contains('exclude = ["*.tmp", "node_modules/**"]'));

@@ -7,15 +7,11 @@ import 'app.dart';
 import 'app/app_controller.dart';
 import 'app/window_title.dart';
 import 'core/app_paths.dart';
-import 'core/profile_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final paths = AppPaths.resolve();
-  final controller = AppController(
-    paths: paths,
-    profileStore: ProfileStore(paths),
-  );
+  final controller = AppController(paths: paths);
   final navigatorKey = GlobalKey<NavigatorState>();
   runApp(EncryImmortalsApp(controller: controller, navigatorKey: navigatorKey));
   unawaited(controller.initialize());

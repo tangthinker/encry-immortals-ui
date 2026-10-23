@@ -5,6 +5,59 @@
 
 ---
 
+## 2026-10-24 01:10 · 多工作区：新建 / 导入 / 切换
+
+### 数据模型
+
+- 新增 `WorkspaceStore` 和 `WorkspaceInfo`：
+  - 应用根目录保存 `workspaces.json`、全局 `preferences.json`、`instance.lock`。
+  - 每个工作区位于 `workspaces/<id>/`，独占 `profile.json`、`config.toml`、`vault/`（vault.meta/state.db/journal）。
+  - `profile.vaultDir` / `profile.configPath` 写绝对路径，切换工作区只是一次 active id 切换。
+- 旧单工作区自动迁移：
+  - 首次启动发现根目录旧 `profile.json` 时，创建 `workspaces/<profile-id>/`，移动 profile/config/vault；
+  - 重写 profile 的 vault/config 路径和 config.toml；
+  - 迁移失败会尽量回滚，TargetDir 永不触碰。
+- 新建/导入使用草稿目录：只有 onboarding 成功后才写入 `workspaces.json`；取消时删除草稿并恢复之前活动工作区。
+
+### 控制器
+
+- `AppController` 不再直接持有单个 `ProfileStore`，改为持有 `WorkspaceStore`：
+  - `initialize()` 初始化工作区索引、迁移旧数据、加载 active profile；
+  - `beginWorkspaceSetup(create/import)`、`cancelWorkspaceSetup()`、`switchWorkspace(id)`；
+  - `switchWorkspace` 会锁定当前会话并进入目标工作区的解锁页；
+  - 主题与单实例锁仍是全局；profile/config/定时计划/控制平面按工作区隔离。
+- `resetLocalConfig` 现在只移除当前工作区，并自动切到下一个工作区或回到 onboarding。
+
+### UI
+
+- 侧边栏工作区名称可点击，打开工作区弹窗：切换、新建、导入。
+- 解锁页、设置页、启动失败页都提供工作区入口。
+- Onboarding 从“新建/导入工作区”直接进入对应表单；步骤 0 可返回原工作区。
+- 切换工作区会增加 `workspaceRevision`，强制重建解锁页，清除旧密码输入状态。
+
+### 验证
+
+```text
+flutter analyze                          No issues found
+flutter test                             102 passed, 5 integration skipped
+workspace_store_test                     迁移、草稿提交/取消、切换、移除
+workspace_switcher_test                  弹窗列表与新建/导入入口
+workspace_lifecycle_test（真实 core）    旧数据迁移 → 创建第二个 → 切换
+```
+
+真实 core 验证了：
+
+- 旧根目录 profile/config/vault 被迁移到 `workspaces/<id>/`；
+- 第二个工作区创建后配置文件落在自己的工作区；
+- `switchWorkspace` 锁定并切回第一个工作区。
+
+### 版本
+
+- `0.4.0+6`
+- 需要重新构建 universal / arm64 / Windows 包。
+
+---
+
 ## 2026-10-24 00:40 · 持续备份到所有数据备份完毕
 
 ### 需求

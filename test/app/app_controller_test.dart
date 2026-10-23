@@ -6,7 +6,6 @@ import 'package:encry_immortals_ui/core/app_preferences.dart';
 import 'package:encry_immortals_ui/core/core_gateway.dart';
 import 'package:encry_immortals_ui/core/core_locator.dart';
 import 'package:encry_immortals_ui/core/core_runtime.dart';
-import 'package:encry_immortals_ui/core/profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -50,7 +49,6 @@ void main() {
   test('没有 profile 时进入 onboarding', () async {
     final controller = AppController(
       paths: paths,
-      profileStore: ProfileStore(paths),
       runtimeLoader: () async => fakeRuntime(),
       acquireInstanceLock: false,
     );
@@ -63,7 +61,6 @@ void main() {
   test('核心加载失败时进入 failed 并保留诊断', () async {
     final controller = AppController(
       paths: paths,
-      profileStore: ProfileStore(paths),
       runtimeLoader: () async =>
           throw const CoreRuntimeException('找不到 sidecar'),
       acquireInstanceLock: false,
@@ -77,7 +74,6 @@ void main() {
   test('主题默认浅色，修改后跨控制器保留', () async {
     final first = AppController(
       paths: paths,
-      profileStore: ProfileStore(paths),
       runtimeLoader: () async => fakeRuntime(),
       acquireInstanceLock: false,
     );
@@ -90,7 +86,6 @@ void main() {
 
     final second = AppController(
       paths: paths,
-      profileStore: ProfileStore(paths),
       runtimeLoader: () async => fakeRuntime(),
       acquireInstanceLock: false,
     );
@@ -101,10 +96,32 @@ void main() {
     expect(second.themeMode, AppThemeMode.system);
   });
 
+  test('无工作区时创建草稿，取消新建回到 onboarding', () async {
+    final controller = AppController(
+      paths: paths,
+      runtimeLoader: () async => fakeRuntime(),
+      acquireInstanceLock: false,
+    );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+    expect(controller.phase, AppPhase.onboarding);
+    expect(controller.workspaces, isEmpty);
+    expect(controller.hasDraftWorkspace, isTrue);
+
+    await controller.beginWorkspaceSetup(WorkspaceSetupMode.create);
+    expect(controller.phase, AppPhase.onboarding);
+    expect(controller.workspaceSetupMode, WorkspaceSetupMode.create);
+
+    await controller.cancelWorkspaceSetup();
+    expect(controller.phase, AppPhase.onboarding);
+    expect(controller.workspaceSetupMode, isNull);
+    expect(controller.hasDraftWorkspace, isTrue);
+    expect(controller.workspaces, isEmpty);
+  });
+
   test('重置本地配置回到 onboarding', () async {
     final controller = AppController(
       paths: paths,
-      profileStore: ProfileStore(paths),
       runtimeLoader: () async => fakeRuntime(),
       acquireInstanceLock: false,
     );

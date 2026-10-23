@@ -20,8 +20,11 @@ import '../core/profile.dart';
 import '../core/profile_store.dart';
 import '../core/vault_session.dart';
 import '../core/vault_settings.dart';
+import '../core/workspace_store.dart';
 
 enum AppPhase { starting, alreadyRunning, failed, onboarding, locked, unlocked }
+
+enum WorkspaceSetupMode { create, import }
 
 class UnlockOutcome {
   const UnlockOutcome({required this.success, this.result, this.message});
@@ -34,14 +37,15 @@ class UnlockOutcome {
 class AppController extends ChangeNotifier {
   AppController({
     required this.paths,
-    required this.profileStore,
+    WorkspaceStore? workspaceStore,
     AppPreferencesStore? preferencesStore,
     CommandQueue? queue,
     CoreRuntimeLoader? runtimeLoader,
     this.platform = const PlatformService(),
     bool acquireInstanceLock = true,
     bool allowEnvironmentOverride = kDebugMode,
-  }) : preferencesStore = preferencesStore ?? AppPreferencesStore(paths),
+  }) : workspaceStore = workspaceStore ?? WorkspaceStore(paths),
+       preferencesStore = preferencesStore ?? AppPreferencesStore(paths),
        queue = queue ?? CommandQueue(),
        // ignore: prefer_initializing_formals
        _runtimeLoader = runtimeLoader,
@@ -51,7 +55,7 @@ class AppController extends ChangeNotifier {
        _allowEnvironmentOverride = allowEnvironmentOverride;
 
   final AppPaths paths;
-  final ProfileStore profileStore;
+  final WorkspaceStore workspaceStore;
   final AppPreferencesStore preferencesStore;
   final CommandQueue queue;
   final PlatformService platform;
@@ -73,14 +77,23 @@ class AppController extends ChangeNotifier {
   bool _disposed = false;
   int _dataRevision = 0;
   int _refreshRevision = 0;
+  int _workspaceRevision = 0;
   InstanceLock? _instanceLock;
   AppThemeMode _themeMode = AppThemeMode.light;
   Timer? _scheduleTimer;
   bool _scheduledBackupRunning = false;
   int _scheduledBackupRevision = 0;
   String? _lastScheduledBackupMessage;
+  WorkspaceSetupMode? _workspaceSetupMode;
 
   AppPhase get phase => _phase;
+  ProfileStore get profileStore => workspaceStore.requireActiveStore();
+  List<WorkspaceInfo> get workspaces => workspaceStore.workspaces;
+  WorkspaceInfo? get activeWorkspace => workspaceStore.activeWorkspace;
+  WorkspaceSetupMode? get workspaceSetupMode => _workspaceSetupMode;
+  bool get hasWorkspaces => workspaceStore.hasWorkspaces;
+  bool get hasDraftWorkspace => workspaceStore.hasDraft;
+  AppPaths? get activeWorkspacePaths => workspaceStore.activePaths;
   CoreRuntime? get runtime => _runtime;
   Profile? get profile => _profile;
   VaultSession? get session => _session;
@@ -92,6 +105,7 @@ class AppController extends ChangeNotifier {
   bool get unlocking => _unlocking;
   int get dataRevision => _dataRevision;
   int get refreshRevision => _refreshRevision;
+  int get workspaceRevision => _workspaceRevision;
   AppThemeMode get themeMode => _themeMode;
   BackupSchedule get backupSchedule =>
       _profile?.schedule ?? const BackupSchedule();
@@ -112,7 +126,6 @@ class AppController extends ChangeNotifier {
     _notify();
     try {
       await paths.ensure();
-      _themeMode = (await preferencesStore.load()).themeMode;
       if (_acquireInstanceLock && _instanceLock == null) {
         _instanceLock = await InstanceLock.acquire(paths.instanceLockFile);
         if (_instanceLock == null) {
@@ -121,51 +134,71 @@ class AppController extends ChangeNotifier {
           return;
         }
       }
+      await workspaceStore.initialize();
+      _themeMode = (await preferencesStore.load()).themeMode;
 
       _runtime = await (_runtimeLoader ?? _loadRuntime)();
-      var loaded = await profileStore.load();
-      if (loaded != null &&
-          loaded.schedule.isEnabled &&
-          loaded.schedule.nextRunAt == null) {
-        final next = loaded.schedule.nextAfter(DateTime.now());
-        if (next != null) {
-          loaded = loaded.copyWith(
-            schedule: loaded.schedule.copyWith(
-              nextRunAt: next,
-              clearLastError: true,
-            ),
-          );
-          try {
-            await profileStore.save(loaded);
-          } catch (_) {
-            // 定时计划不应阻塞启动；内存中的 nextRunAt 仍可使用。
-          }
-        }
-      }
-      _profile = loaded;
-      if (loaded == null) {
-        _session = null;
-        _phase = AppPhase.onboarding;
-        _notify();
-        return;
-      }
-      if (!loaded.vaultInitialized) {
-        throw ProfileStoreException('本地控制平面缺少 vault.meta：${loaded.vaultDir}');
-      }
-      _session = VaultSession(
-        gateway: _runtime!.gateway,
-        profile: loaded,
-        queue: queue,
-      );
-      await _loadPreviewStatus();
-      await refreshTargetLock();
-      _phase = AppPhase.locked;
+      await _loadActiveWorkspace();
     } catch (error) {
       _startupError = _friendlyError(error);
       _phase = AppPhase.failed;
     }
     _restartScheduleTimer();
     _notify();
+  }
+
+  Future<void> _loadActiveWorkspace() async {
+    _profile = null;
+    _session = null;
+    _previewStatus = null;
+    _targetLock = null;
+    _unlockError = null;
+    _unlockExit = null;
+    final store = workspaceStore.activeStore;
+    if (store == null) {
+      _phase = AppPhase.onboarding;
+      return;
+    }
+    var loaded = await store.load();
+    if (loaded != null &&
+        loaded.schedule.isEnabled &&
+        loaded.schedule.nextRunAt == null) {
+      final next = loaded.schedule.nextAfter(DateTime.now());
+      if (next != null) {
+        loaded = loaded.copyWith(
+          schedule: loaded.schedule.copyWith(
+            nextRunAt: next,
+            clearLastError: true,
+          ),
+        );
+        try {
+          await store.save(loaded);
+        } catch (_) {
+          // 定时计划不应阻塞启动；内存中的 nextRunAt 仍可使用。
+        }
+      }
+    }
+    _profile = loaded;
+    if (loaded == null) {
+      _phase = AppPhase.onboarding;
+      return;
+    }
+    if (!loaded.vaultInitialized) {
+      throw ProfileStoreException('本地控制平面缺少 vault.meta：${loaded.vaultDir}');
+    }
+    final runtime = _runtime;
+    if (runtime == null) {
+      throw const WorkspaceStoreException('核心 sidecar 不可用，无法打开工作区。');
+    }
+    _session = VaultSession(
+      gateway: runtime.gateway,
+      profile: loaded,
+      queue: queue,
+    );
+    await _loadPreviewStatus();
+    await refreshTargetLock();
+    await workspaceStore.refreshActiveMetadata(loaded);
+    _phase = AppPhase.locked;
   }
 
   Future<CoreRuntime> _loadRuntime() {
@@ -205,13 +238,22 @@ class AppController extends ChangeNotifier {
         error: integrityError,
       );
     }
+    final activePaths = workspaceStore.activePaths;
+    final store = workspaceStore.activeStore;
+    if (activePaths == null || store == null) {
+      return const OnboardingResult(
+        success: false,
+        steps: [],
+        error: '没有可用于创建的工作区目录。',
+      );
+    }
     final service = OnboardingService(
       gateway: runtime.gateway,
-      paths: paths,
-      store: profileStore,
+      paths: activePaths,
+      store: store,
       queue: queue,
     );
-    return service.create(
+    final result = await service.create(
       sourceRoot: sourceRoot,
       targetDir: targetDir,
       password: password,
@@ -219,6 +261,21 @@ class AppController extends ChangeNotifier {
       onLog: onLog,
       onStep: onStep,
     );
+    if (result.success && result.profile != null) {
+      try {
+        await workspaceStore.commitDraft(result.profile!);
+        _workspaceSetupMode = null;
+      } catch (error) {
+        return OnboardingResult(
+          success: false,
+          steps: result.steps,
+          error: '工作区已创建，但保存工作区索引失败：$error',
+          profile: result.profile,
+          key: result.key,
+        );
+      }
+    }
+    return result;
   }
 
   Future<OnboardingResult> joinVault({
@@ -246,13 +303,22 @@ class AppController extends ChangeNotifier {
         error: integrityError,
       );
     }
+    final activePaths = workspaceStore.activePaths;
+    final store = workspaceStore.activeStore;
+    if (activePaths == null || store == null) {
+      return const OnboardingResult(
+        success: false,
+        steps: [],
+        error: '没有可用于导入的工作区目录。',
+      );
+    }
     final service = OnboardingService(
       gateway: runtime.gateway,
-      paths: paths,
-      store: profileStore,
+      paths: activePaths,
+      store: store,
       queue: queue,
     );
-    return service.join(
+    final result = await service.join(
       sourceRoot: sourceRoot,
       targetDir: targetDir,
       armorKey: armorKey,
@@ -261,6 +327,21 @@ class AppController extends ChangeNotifier {
       onLog: onLog,
       onStep: onStep,
     );
+    if (result.success && result.profile != null) {
+      try {
+        await workspaceStore.commitDraft(result.profile!);
+        _workspaceSetupMode = null;
+      } catch (error) {
+        return OnboardingResult(
+          success: false,
+          steps: result.steps,
+          error: '工作区已导入，但保存工作区索引失败：$error',
+          profile: result.profile,
+          key: result.key,
+        );
+      }
+    }
+    return result;
   }
 
   /// 在 onboarding 成功页点击“进入应用”后调用：建立会话并解锁。
@@ -272,6 +353,15 @@ class AppController extends ChangeNotifier {
     if (runtime == null) {
       return const UnlockOutcome(success: false, message: '核心 sidecar 不可用。');
     }
+    if (workspaceStore.hasDraft) {
+      try {
+        await workspaceStore.commitDraft(profile);
+      } catch (error) {
+        return UnlockOutcome(success: false, message: '保存工作区索引失败：$error');
+      }
+    }
+    _workspaceSetupMode = null;
+    await workspaceStore.refreshActiveMetadata(profile);
     _profile = profile;
     _session = VaultSession(
       gateway: runtime.gateway,
@@ -280,6 +370,7 @@ class AppController extends ChangeNotifier {
     );
     final outcome = await unlock(password);
     if (outcome.success) {
+      _workspaceRevision++;
       _phase = AppPhase.unlocked;
       _unlockError = null;
       _unlockExit = null;
@@ -550,15 +641,92 @@ class AppController extends ChangeNotifier {
     _targetLock = null;
     _unlockError = null;
     _unlockExit = null;
-    await profileStore.forget(deleteVault: true);
+    _workspaceSetupMode = null;
+    await workspaceStore.forgetActive();
     if (_runtime == null) {
       _phase = AppPhase.failed;
       _startupError = '本地配置已移除，但核心 sidecar 仍不可用。';
     } else {
-      _phase = AppPhase.onboarding;
+      await _loadActiveWorkspace();
       _startupError = null;
     }
+    _workspaceRevision++;
     _notify();
+  }
+
+  Future<void> beginWorkspaceSetup(WorkspaceSetupMode mode) async {
+    if (queue.isBusy) {
+      throw StateError('运行中的命令结束后才能切换工作区。');
+    }
+    _scheduleTimer?.cancel();
+    _scheduleTimer = null;
+    _session?.lock();
+    _session = null;
+    _profile = null;
+    _previewStatus = null;
+    _targetLock = null;
+    _unlockError = null;
+    _unlockExit = null;
+    await workspaceStore.beginDraft();
+    _workspaceSetupMode = mode;
+    _startupError = null;
+    _workspaceRevision++;
+    _phase = AppPhase.onboarding;
+    _notify();
+  }
+
+  Future<void> cancelWorkspaceSetup() async {
+    if (queue.isBusy) throw StateError('运行中的命令结束后才能返回。');
+    _workspaceSetupMode = null;
+    if (workspaceStore.hasDraft) {
+      await workspaceStore.cancelDraft();
+    }
+    _session?.lock();
+    _session = null;
+    _profile = null;
+    _previewStatus = null;
+    _targetLock = null;
+    _unlockError = null;
+    _unlockExit = null;
+    try {
+      await _loadActiveWorkspace();
+      _startupError = null;
+    } catch (error) {
+      _startupError = _friendlyError(error);
+      _phase = AppPhase.failed;
+    }
+    _workspaceRevision++;
+    _restartScheduleTimer();
+    _notify();
+  }
+
+  Future<String?> switchWorkspace(String id) async {
+    if (queue.isBusy) return '命令运行中，结束后才能切换工作区。';
+    if (workspaceStore.activeWorkspace?.id == id) return null;
+    _scheduleTimer?.cancel();
+    _scheduleTimer = null;
+    _session?.lock();
+    _session = null;
+    _profile = null;
+    _previewStatus = null;
+    _targetLock = null;
+    _unlockError = null;
+    _unlockExit = null;
+    _workspaceSetupMode = null;
+    try {
+      await workspaceStore.switchTo(id);
+      await _loadActiveWorkspace();
+      _startupError = null;
+      _workspaceRevision++;
+      _restartScheduleTimer();
+      _notify();
+      return null;
+    } catch (error) {
+      _startupError = _friendlyError(error);
+      _phase = AppPhase.failed;
+      _notify();
+      return _startupError;
+    }
   }
 
   Future<void> quit({bool force = false}) async {

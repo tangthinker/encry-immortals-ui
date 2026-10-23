@@ -16,6 +16,7 @@ import '../theme.dart';
 import '../widgets/backup_schedule_card.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
+import '../widgets/workspace_switcher.dart';
 import '../widgets/vault_settings_form.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -284,7 +285,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 22),
               SectionCard(
                 title: '当前库',
-                subtitle: '单 profile；源根目录在创建时固定',
+                subtitle: '每个工作区独立 profile 与 config.toml；源根目录创建后固定',
                 trailing: StatusPill(
                   label: profile?.mode.label ?? '未配置',
                   color: AppColors.blue,
@@ -339,6 +340,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const Divider(),
                     InfoRow(
+                      label: '工作区目录',
+                      value: controller.activeWorkspace?.directory ?? '—',
+                      mono: true,
+                      selectable: true,
+                      trailing: _CopyButton(
+                        value: controller.activeWorkspace?.directory,
+                        onCopy: _copy,
+                      ),
+                    ),
+                    const Divider(),
+                    InfoRow(
                       label: '创建时间',
                       value: profile == null
                           ? '—'
@@ -346,6 +358,17 @@ class _SettingsPageState extends State<SettingsPage> {
                               0,
                               19,
                             ),
+                    ),
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => showWorkspaceSwitcher(context, controller),
+                        icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                        label: const Text('切换 / 新建 / 导入工作区'),
+                      ),
                     ),
                   ],
                 ),
@@ -542,7 +565,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     const Divider(),
                     _ActionRow(
                       icon: Icons.delete_outline_rounded,
-                      title: '移除本地配置',
+                      title: '移除当前工作区配置',
                       description: '删除 profile、config.toml 与本地控制平面（vault）；TargetDir 不会被删除。',
                       danger: true,
                       button: OutlinedButton(
@@ -710,7 +733,7 @@ class _ForgetProfileDialogState extends State<_ForgetProfileDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '会删除 profile.json、config.toml 和应用数据目录里的本地控制平面（vault）。',
+              '会删除当前工作区的 profile.json、config.toml 和本地控制平面（vault）。其他工作区不受影响。',
               style: TextStyle(
                 fontSize: 12.5,
                 height: 1.6,

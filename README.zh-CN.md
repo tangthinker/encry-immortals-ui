@@ -18,13 +18,14 @@
   <a href="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml"><img alt="Release workflow" src="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml/badge.svg"></a>
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter&logoColor=white">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-96-2F7D63">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-102-2F7D63">
   <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-10161A">
 </p>
 
 > [!NOTE]
-> **状态：MVP，持续开发中。** 最新 release `v0.3.0` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
-> 独立的 **Apple Silicon arm64 构建**，以及 **Windows x64 安装包 + portable zip**。macOS 使用 ad-hoc 签名，未公证；
+> **状态：MVP，持续开发中。** 最新 release `v0.4.0` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
+> 独立的 **Apple Silicon arm64 构建**、**Windows x64 安装包 + portable zip**，以及 **多个隔离工作区**。
+macOS 使用 ad-hoc 签名，未公证；
 > Windows 已由 CI 构建，但仍需在真实 Windows 宿主机验证并接入 Authenticode。
 
 ---
@@ -84,6 +85,7 @@ Encry Immortals 选择另一条路：
 
 | 模块 | 内容 |
 |---|---|
+| **多工作区** | 支持新建、导入、切换多个工作区；每个工作区独立拥有 `profile.json`、`config.toml` 和本地控制平面（vault）。旧单工作区数据自动迁移。 |
 | **库生命周期** | 创建新库或加入已有 TargetDir；在第一条命令前选择存储、压缩、扫描、排除与完整性参数。 |
 | **增量备份** | 扫描 → 切片 → zstd → 加密 → pack。支持 dry-run、实时进度/日志、截断提示、继续备份和 `--break-lock` 恢复。 |
 | **持续备份** | 单次达到 `session_max_mib` 后，可保留“继续备份”再执行一次，或选择“持续备份到所有数据备份完毕”自动重复，并带停止与无进展保护。 |
@@ -110,7 +112,7 @@ Flutter 页面
 
 - UI 不直接修改 vault 文件，所有操作经过 sidecar 和有类型的 JSON 结果。
 - sidecar 读取 `config.toml`（POSIX 权限 0600）；GUI 负责写入，且只写当前版本真正生效的参数。
-- 控制平面（`vault.meta`、`state.db`、`journal`、`config.toml`）在应用数据目录；TargetDir 只保存密文和元数据。
+- 应用数据根目录保存 `workspaces.json`；每个工作区拥有自己的 `profile.json`、`config.toml` 和控制平面（`vault.meta`、`state.db`、`journal`）。TargetDir 只保存密文和元数据。
 - 核心以 submodule 固定在 `third_party/encry-immortals`，当前 tag 为 `v0.1.5`。
 - release 信任链：先签名 sidecar，再计算 SHA-256，构建时固定哈希，启动与每次解锁前校验。
 
@@ -146,20 +148,20 @@ Encry Immortals 使用**应用内调度器**：
 
 **macOS universal**（`x86_64 + arm64`）：
 
-- [`Encry-Immortals-v0.3.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.dmg)
-- [`Encry-Immortals-v0.3.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.zip)
+- [`Encry-Immortals-v0.4.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-universal.dmg)
+- [`Encry-Immortals-v0.4.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-universal.zip)
 
 **macOS arm64**（Apple Silicon 专用）：
 
-- [`Encry-Immortals-v0.3.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.3.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.zip)
+- [`Encry-Immortals-v0.4.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.4.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-arm64.zip)
 
 打开任一 DMG，把 **Encry Immortals** 拖入“应用程序”。两个构建都是 ad-hoc 签名、未公证。
 
 **Windows x64**：
 
-- [`Encry-Immortals-0.3.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
-- [`Encry-Immortals-0.3.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64-portable.zip) — 免安装版本
+- [`Encry-Immortals-0.4.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-0.4.0-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
+- [`Encry-Immortals-0.4.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-0.4.0-Windows-x64-portable.zip) — 免安装版本
 
 Windows 产物目前**未签名**；Authenticode 与 Windows 实机验证仍在路线图中。
 
@@ -199,7 +201,7 @@ dart run tool/verify_bundle.dart \
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                     # 96 个单元/组件测试，4 个 integration 默认跳过
+flutter --no-version-check test                     # 102 个单元/组件测试，5 个 integration 默认跳过
 RUN_CORE_INTEGRATION=1 \
 EIMMORTAL_CORE_PATH=/path/to/eimmortal \
   flutter --no-version-check test test/integration

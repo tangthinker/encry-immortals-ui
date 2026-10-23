@@ -18,13 +18,14 @@
   <a href="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml"><img alt="Release workflow" src="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml/badge.svg"></a>
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter&logoColor=white">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-96-2F7D63">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-102-2F7D63">
   <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-10161A">
 </p>
 
 > [!NOTE]
-> **Status: MVP, actively developed.** Latest release `v0.3.0` ships a **universal macOS build** (`x86_64 + arm64`),
-> a dedicated **Apple Silicon build**, and a **Windows x64 installer + portable zip**. The macOS builds are ad-hoc signed
+> **Status: MVP, actively developed.** Latest release `v0.4.0` ships a **universal macOS build** (`x86_64 + arm64`),
+> a dedicated **Apple Silicon build**, a **Windows x64 installer + portable zip**, and **multiple isolated workspaces**.
+> The macOS builds are ad-hoc signed
 > (not notarized); Windows is CI-built but still needs physical-host validation and Authenticode signing before wider distribution.
 
 ---
@@ -84,6 +85,7 @@ More screens: **[unlock](docs/assets/m1-unlock.jpg)** · **[history](docs/assets
 
 | Area | What you get |
 |---|---|
+| **Workspaces** | Create, import and switch multiple workspaces; each owns its own `profile.json`, `config.toml` and local vault. Existing single-workspace installs migrate automatically. |
 | **Vault lifecycle** | Create a new vault or join an existing TargetDir with an Armor Key. Choose storage, compression, scan and integrity parameters before the first command. |
 | **Incremental backups** | Scan → chunk → zstd → encrypt → pack. Dry-run preview, live progress/logs, truncation notice, continue-later and `--break-lock` recovery. |
 | **Continuous backup** | When a run hits `session_max_mib`, keep **Continue** for one more run or choose **Keep backing up until complete**; it repeats safely with stop and no-progress guards. |
@@ -110,7 +112,7 @@ Flutter screens
 
 - The UI never edits vault files directly. Every operation goes through the sidecar and its typed JSON response.
 - The sidecar reads `config.toml` (0600 on POSIX); the GUI owns that file and writes only implemented parameters.
-- The control plane (`vault.meta`, `state.db`, `journal`, `config.toml`) lives in the app data directory. The TargetDir contains only encrypted data and metadata.
+- The app data root keeps `workspaces.json`; each workspace has its own `profile.json`, `config.toml` and control plane (`vault.meta`, `state.db`, `journal`). The TargetDir contains only encrypted data and metadata.
 - The core is pinned as the `third_party/encry-immortals` submodule at `v0.1.5`.
 - Release trust chain: sign the sidecar → compute SHA-256 → pin it at build time → verify the hash before launch and on every unlock.
 
@@ -147,20 +149,20 @@ The app **must be running and unlocked** for a scheduled backup to execute. The 
 
 **macOS universal** — latest release (`x86_64 + arm64`):
 
-- [`Encry-Immortals-v0.3.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.dmg)
-- [`Encry-Immortals-v0.3.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.zip)
+- [`Encry-Immortals-v0.4.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-universal.dmg)
+- [`Encry-Immortals-v0.4.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-universal.zip)
 
 **macOS arm64** — dedicated Apple Silicon build:
 
-- [`Encry-Immortals-v0.3.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.3.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.zip)
+- [`Encry-Immortals-v0.4.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.4.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-arm64.zip)
 
 Open either DMG, drag **Encry Immortals** to Applications, and launch it. Both builds are ad-hoc signed and not notarized.
 
 **Windows x64** — latest release:
 
-- [`Encry-Immortals-0.3.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
-- [`Encry-Immortals-0.3.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64-portable.zip) — portable build
+- [`Encry-Immortals-0.4.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-0.4.0-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
+- [`Encry-Immortals-0.4.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-0.4.0-Windows-x64-portable.zip) — portable build
 
 The Windows artifacts are **unsigned**; Authenticode and physical Windows testing are still roadmap items.
 
@@ -200,7 +202,7 @@ The release script signs the sidecar before hashing, copies it into `Contents/Re
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                     # 96 unit/widget tests, 4 integration skipped
+flutter --no-version-check test                     # 102 unit/widget tests, 5 integration skipped
 RUN_CORE_INTEGRATION=1 \
 EIMMORTAL_CORE_PATH=/path/to/eimmortal \
   flutter --no-version-check test test/integration
@@ -224,8 +226,8 @@ Windows artifacts are produced in CI but remain unsigned until Authenticode is w
 
 ```text
 lib/
-  app/                         screens, widgets, theme, controller
-  core/                        sidecar gateway, models, queue, profile, settings
+  app/                         screens, widgets, theme, controller, workspace switcher
+  core/                        sidecar gateway, models, queue, profile, workspace store, settings
 assets/icon/                   icon SVG sources + 1024px masters
 tool/                          core/app builds, bundle verification, icon tooling
 macos/ · windows/              native runners and assets

@@ -9,6 +9,7 @@ import '../format.dart';
 import '../theme.dart';
 import '../widgets/app_mark.dart';
 import '../widgets/section_card.dart';
+import '../widgets/workspace_switcher.dart';
 
 class UnlockScreen extends StatefulWidget {
   const UnlockScreen({required this.controller, super.key});
@@ -63,9 +64,9 @@ class _UnlockScreenState extends State<UnlockScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('重置本地配置？'),
+        title: const Text('重置当前工作区？'),
         content: const Text(
-          '会删除应用数据目录里的控制平面与 profile，TargetDir 和其他备份数据不会被动。'
+          '会删除当前工作区的控制平面与 profile，其他工作区和 TargetDir 不会被动。'
           '重新加入需要 Armor Key 与主密码。',
         ),
         actions: [
@@ -85,9 +86,8 @@ class _UnlockScreenState extends State<UnlockScreen> {
       await widget.controller.resetLocalConfig();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$error')));
     }
   }
 
@@ -168,7 +168,7 @@ class _LibraryInfo extends StatelessWidget {
             children: [
               const AppMark(size: 42),
               const SizedBox(width: 13),
-               Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -198,7 +198,7 @@ class _LibraryInfo extends StatelessWidget {
           const SizedBox(height: 28),
           Text(
             profile?.name ?? '备份库',
-            style:  TextStyle(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
@@ -208,7 +208,7 @@ class _LibraryInfo extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             profile?.mode.label ?? '本地备份库',
-            style:  TextStyle(fontSize: 12.5, color: AppColors.faint),
+            style: TextStyle(fontSize: 12.5, color: AppColors.faint),
           ),
           const SizedBox(height: 24),
           const Divider(),
@@ -241,15 +241,18 @@ class _LibraryInfo extends StatelessWidget {
               const SizedBox(width: 10),
               _Metric(
                 label: '密文体积',
-                value: status == null ? '—' : formatBytes(status.packTotalBytes),
+                value: status == null
+                    ? '—'
+                    : formatBytes(status.packTotalBytes),
               ),
             ],
           ),
           if (controller.targetLock?.locked == true) ...[
             const SizedBox(height: 18),
-             NoticeBanner(
+            NoticeBanner(
               title: '检测到写锁',
-              message: 'TargetDir 中存在 .eimmortal.lock，上次写入可能被中断。'
+              message:
+                  'TargetDir 中存在 .eimmortal.lock，上次写入可能被中断。'
                   '进入应用后可在设置中诊断，不要直接删除。',
               color: AppColors.amber,
               icon: Icons.lock_outline_rounded,
@@ -264,7 +267,7 @@ class _LibraryInfo extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-           Text(
+          Text(
             '主密码只存在于当前进程内存，不会写入磁盘或日志。锁定或退出后需要重新输入。',
             style: TextStyle(fontSize: 11, height: 1.6, color: AppColors.faint),
           ),
@@ -295,14 +298,14 @@ class _Metric extends StatelessWidget {
           children: [
             Text(
               label,
-              style:  TextStyle(fontSize: 10.5, color: AppColors.faint),
+              style: TextStyle(fontSize: 10.5, color: AppColors.faint),
             ),
             const SizedBox(height: 4),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:  TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.text,
@@ -349,7 +352,7 @@ class _UnlockForm extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-           Text(
+          Text(
             '解锁',
             style: TextStyle(
               fontSize: 22,
@@ -358,7 +361,7 @@ class _UnlockForm extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-           Text(
+          Text(
             '使用主密码解锁控制平面，密码不会保存。',
             style: TextStyle(fontSize: 12.5, color: AppColors.faint),
           ),
@@ -399,7 +402,7 @@ class _UnlockForm extends StatelessWidget {
           FilledButton(
             onPressed: busy ? null : onSubmit,
             child: busy
-                ?  SizedBox(
+                ? SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
@@ -410,24 +413,36 @@ class _UnlockForm extends StatelessWidget {
                 : const Text('解锁'),
           ),
           const SizedBox(height: 10),
-          TextButton(
-            onPressed: busy ? null : onReset,
-            child:  Text(
-              '忘记密码或重置本地配置',
-              style: TextStyle(color: AppColors.faint, fontSize: 12),
-            ),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => showWorkspaceSwitcher(context, controller),
+                icon: const Icon(Icons.swap_horiz_rounded, size: 15),
+                label: const Text('切换工作区'),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: busy ? null : onReset,
+                child: Text(
+                  '忘记密码或重置当前工作区',
+                  style: TextStyle(color: AppColors.faint, fontSize: 12),
+                ),
+              ),
+            ],
           ),
           const Divider(),
           const SizedBox(height: 12),
           Row(
             children: [
-               Icon(
+              Icon(
                 Icons.lock_outline_rounded,
                 size: 14,
                 color: AppColors.faint,
               ),
               const SizedBox(width: 6),
-               Expanded(
+              Expanded(
                 child: Text(
                   '连续失败不会删除数据；请确认是否还有 CLI 或其他实例在运行。',
                   style: TextStyle(fontSize: 10.5, color: AppColors.faint),

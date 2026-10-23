@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:encry_immortals_ui/app.dart';
+import 'package:encry_immortals_ui/app/app_controller.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
@@ -24,9 +25,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('选择如何开始'), findsOneWidget);
-    expect(find.text('创建新库'), findsOneWidget);
-    expect(find.text('加入已有库'), findsOneWidget);
+    expect(find.text('新建或导入工作区'), findsOneWidget);
+    expect(find.text('新建工作区'), findsOneWidget);
+    expect(find.text('导入已有工作区'), findsOneWidget);
   });
 
   testWidgets('浅色外观下 onboarding 可渲染', (tester) async {
@@ -47,9 +48,29 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('选择如何开始'), findsOneWidget);
-    expect(find.text('创建新库'), findsOneWidget);
+    expect(find.text('新建或导入工作区'), findsOneWidget);
+    expect(find.text('新建工作区'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('从工作区弹窗新建时直接进入创建表单', (tester) async {
+    final app = (await tester.runAsync(FakeApp.create))!;
+    addTearDown(() async {
+      await app.dispose();
+    });
+    await tester.runAsync(
+      () => app.controller.beginWorkspaceSetup(WorkspaceSetupMode.create),
+    );
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(EncryImmortalsApp(controller: app.controller));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('新建工作区'), findsOneWidget);
+    expect(find.text('源目录'), findsOneWidget);
+    expect(find.text('返回工作区'), findsOneWidget);
   });
 
   testWidgets('创建向导在未选目录时阻止继续', (tester) async {
@@ -64,7 +85,7 @@ void main() {
     await tester.pumpWidget(EncryImmortalsApp(controller: app.controller));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('创建新库'));
+    await tester.tap(find.text('新建工作区'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -114,7 +135,7 @@ void _onboardingParameterStepTests() {
     await tester.pumpWidget(EncryImmortalsApp(controller: app.controller));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('创建新库'));
+    await tester.tap(find.text('新建工作区'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

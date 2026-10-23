@@ -5,7 +5,6 @@ import 'package:encry_immortals_ui/core/app_paths.dart';
 import 'package:encry_immortals_ui/core/core_gateway.dart';
 import 'package:encry_immortals_ui/core/core_locator.dart';
 import 'package:encry_immortals_ui/core/core_runtime.dart';
-import 'package:encry_immortals_ui/core/profile_store.dart';
 import 'package:path/path.dart' as p;
 
 import '../../core/support/fake_core_process.dart';
@@ -41,7 +40,6 @@ class FakeApp {
     );
     final controller = AppController(
       paths: paths,
-      profileStore: ProfileStore(paths),
       runtimeLoader: () async => runtime,
       acquireInstanceLock: false,
     );

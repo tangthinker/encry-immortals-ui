@@ -8,6 +8,7 @@ import '../app_controller.dart';
 import '../app_info.dart';
 import '../theme.dart';
 import '../widgets/app_mark.dart';
+import '../widgets/workspace_switcher.dart';
 import '../window_title.dart';
 import 'backup_page.dart';
 import 'dashboard_page.dart';
@@ -58,6 +59,10 @@ class _MainShellState extends State<MainShell> {
       ScaffoldMessenger.maybeOf(context)
           ?.showSnackBar(SnackBar(content: Text(message)));
     });
+  }
+
+  Future<void> _openWorkspaceSwitcher() {
+    return showWorkspaceSwitcher(context, widget.controller);
   }
 
   void _navigate(int index) {
@@ -386,6 +391,7 @@ class _MainShellState extends State<MainShell> {
                   busy: busy,
                   onSelect: _navigate,
                   onLock: _lock,
+                  onWorkspace: _openWorkspaceSwitcher,
                 ),
                 Expanded(
                   child: Column(
@@ -471,6 +477,7 @@ class _Sidebar extends StatelessWidget {
     required this.busy,
     required this.onSelect,
     required this.onLock,
+    required this.onWorkspace,
   });
 
   final AppController controller;
@@ -478,11 +485,14 @@ class _Sidebar extends StatelessWidget {
   final bool busy;
   final ValueChanged<int> onSelect;
   final VoidCallback onLock;
+  final VoidCallback onWorkspace;
 
   @override
   Widget build(BuildContext context) {
     final profile = controller.profile;
     final targetName = profile == null ? '未配置' : p.basename(profile.targetDir);
+    final workspaceName =
+        controller.activeWorkspace?.name ?? profile?.name ?? targetName;
     return Container(
       width: 240,
       decoration: BoxDecoration(
@@ -513,11 +523,37 @@ class _Sidebar extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        targetName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, color: AppColors.faint),
+                      Tooltip(
+                        message: '切换工作区',
+                        child: InkWell(
+                          onTap: busy ? null : onWorkspace,
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    workspaceName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: busy
+                                          ? AppColors.faint
+                                          : AppColors.muted,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.expand_more_rounded,
+                                  size: 14,
+                                  color: AppColors.faint,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),

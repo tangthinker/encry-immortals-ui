@@ -58,6 +58,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    _mode = switch (widget.controller.workspaceSetupMode) {
+      WorkspaceSetupMode.create => _Mode.create,
+      WorkspaceSetupMode.import => _Mode.join,
+      null => _Mode.choice,
+    };
     _password.addListener(_onCredentialChanged);
     _confirm.addListener(_onCredentialChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -144,7 +149,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             .where((entry) => p.basename(entry.path) != '.DS_Store')
             .toList();
         if (entries.isNotEmpty) {
-          return '新建库要求 TargetDir 为空；已有备份请使用“加入已有库”。';
+          return '新建工作区要求 TargetDir 为空；已有备份请使用“导入已有工作区”。';
         }
       } on FileSystemException catch (error) {
         return '无法读取 TargetDir：$error';
@@ -201,8 +206,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  void _back() {
+  Future<void> _back() async {
     if (_busy) return;
+    if (_step == 0 && widget.controller.workspaceSetupMode != null) {
+      try {
+        await widget.controller.cancelWorkspaceSetup();
+      } catch (error) {
+        if (mounted) setState(() => _error = '$error');
+      }
+      return;
+    }
     if (_step == 0) {
       setState(() {
         _mode = _Mode.choice;
@@ -413,7 +426,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 36),
         Text(
-          '选择如何开始',
+          '新建或导入工作区',
           style: TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.w700,
@@ -423,8 +436,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          '新建一个库，或从另一台机器带来的 Armor Key 加入已有备份。'
-          '同一个 TargetDir 只对应一个源根目录。',
+          '新建一个工作区，或从另一台机器带来的 Armor Key 导入已有备份。'
+          '每个工作区拥有独立的 profile、config.toml 和本地控制平面。',
           style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.muted),
         ),
         const SizedBox(height: 26),
@@ -434,7 +447,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             final create = _ChoiceCard(
               icon: Icons.add_circle_outline_rounded,
               color: AppColors.accent,
-              title: '创建新库',
+              title: '新建工作区',
               description: '选择一个源目录和一个空的 TargetDir，设置主密码并生成 Armor Key。',
               bullets: const [
                 'TargetDir 建议放在网盘同步目录',
@@ -446,7 +459,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             final join = _ChoiceCard(
               icon: Icons.link_rounded,
               color: AppColors.blue,
-              title: '加入已有库',
+              title: '导入已有工作区',
               description: '选择已有 TargetDir，粘贴另一台机器的 Armor Key，再用主密码验证。',
               bullets: const [
                 '不会重新加密已有数据',
@@ -505,7 +518,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                isJoin ? '加入已有库' : '创建新库',
+                isJoin ? '导入已有工作区' : '新建工作区',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -516,7 +529,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             TextButton.icon(
               onPressed: _busy ? null : _back,
               icon: const Icon(Icons.arrow_back_rounded, size: 16),
-              label: Text(_step == 0 ? '返回选择' : '上一步'),
+              label: Text(
+                _step == 0
+                    ? widget.controller.workspaceSetupMode != null
+                          ? '返回工作区'
+                          : '返回选择'
+                    : '上一步',
+              ),
             ),
           ],
         ),

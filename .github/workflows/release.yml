@@ -417,6 +417,8 @@ jobs:
 
             ### Highlights
 
+            - Workspaces: create, import and switch multiple workspaces. Each workspace keeps its own
+              `profile.json`, `config.toml` and local vault; existing single-workspace profiles are migrated on first launch.
             - Backup page: when a run reaches `session_max_mib`, keep **继续备份** for one more run,
               or use **持续备份到所有数据备份完毕** to repeat automatically until no data remains.
               Continuous mode supports stopping between rounds and stops itself when a round makes no progress.
@@ -437,7 +439,7 @@ jobs:
             ### Quality
 
             - Flutter `3.47.5`, Go `1.27.1`, core `v0.1.5`.
-            - `flutter analyze`, 96 unit/widget tests, and sidecar SHA-256 verification.
+            - `flutter analyze`, 102 unit/widget tests, and sidecar SHA-256 verification.
           files: |
             dist/macos/*
             dist/macos-arm64/*

@@ -51,11 +51,18 @@ class AppPaths {
     return AppPaths(root: root);
   }
 
+  /// Legacy single-workspace locations. New workspaces live under
+  /// `workspaces/<id>/`; these getters remain for migration and tests.
   String get profileFile => p.join(root, 'profile.json');
   String get configFile => p.join(root, 'config.toml');
   String get vaultDir => p.join(root, 'vault');
   String get instanceLockFile => p.join(root, 'instance.lock');
   String get preferencesFile => p.join(root, 'preferences.json');
+
+  String get workspacesDir => p.join(root, 'workspaces');
+  String get workspacesIndexFile => p.join(root, 'workspaces.json');
+  String workspaceDir(String id) => p.join(workspacesDir, id);
+  AppPaths workspacePaths(String id) => AppPaths(root: workspaceDir(id));
 
   Directory get directory => Directory(root);
   Directory get vaultDirectory => Directory(vaultDir);

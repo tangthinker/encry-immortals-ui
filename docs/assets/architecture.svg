@@ -10,7 +10,7 @@
   <rect width="1440" height="840" fill="#F3EEE4"/>
   <text x="60" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="34" font-weight="700" fill="#1E1B16">Encry Immortals</text>
   <text x="60" y="104" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" fill="#6F675A">Local-first encrypted incremental backups · architecture</text>
-  <text x="1380" y="72" text-anchor="end" font-family="Menlo,Consolas,monospace" font-size="12" fill="#8C7B63">v0.3.0 · contract v1</text>
+  <text x="1380" y="72" text-anchor="end" font-family="Menlo,Consolas,monospace" font-size="12" fill="#8C7B63">v0.4.0 · contract v1</text>
   <line x1="60" y1="128" x2="1380" y2="128" stroke="#D8CEBD" stroke-width="1"/>
 
   <!-- UI container -->
@@ -22,7 +22,7 @@
   <text x="108" y="286" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">onboarding · dashboard · backup · history · restore · verify · settings</text>
   <rect x="88" y="320" width="434" height="54" rx="10" fill="#F3EEE4" stroke="#E2D8C8"/>
   <text x="108" y="342" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#1E1B16">AppController</text>
-  <text x="108" y="360" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">state machine · profile · theme · schedule · ChangeNotifier</text>
+  <text x="108" y="360" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">workspaces · profile · theme · schedule · ChangeNotifier</text>
   <rect x="88" y="394" width="434" height="54" rx="10" fill="#F3EEE4" stroke="#E2D8C8"/>
   <text x="108" y="416" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#1E1B16">VaultSession</text>
   <text x="108" y="434" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">typed commands · password held in memory only</text>
@@ -53,12 +53,12 @@
 
   <!-- Control plane -->
   <rect x="1010" y="158" width="370" height="190" rx="18" fill="#FCF9F3" stroke="#D8CEBD"/>
-  <text x="1038" y="196" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="17" font-weight="700" fill="#1E1B16">App-private control plane</text>
+  <text x="1038" y="196" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="17" font-weight="700" fill="#1E1B16">App-private workspace data</text>
   <text x="1038" y="218" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">macOS: ~/Library/Application Support/EncryImmortals</text>
   <text x="1038" y="236" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11.5" fill="#6F675A">Windows: %APPDATA%\EncryImmortals</text>
-  <text x="1038" y="260" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">vault.meta · state.db · journal</text>
-  <text x="1038" y="280" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">config.toml (0600) · profile.json</text>
-  <text x="1038" y="308" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" fill="#8C7B63">Never synced to TargetDir.</text>
+  <text x="1038" y="260" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">workspaces/&lt;id&gt;/profile.json · config.toml</text>
+  <text x="1038" y="280" font-family="Menlo,Consolas,monospace" font-size="12" fill="#1E1B16">workspaces/&lt;id&gt;/vault/ · control plane</text>
+  <text x="1038" y="308" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" fill="#8C7B63">workspaces.json · preferences.json · never synced.</text>
   <line x1="940" y1="318" x2="1010" y2="278" stroke="#8C7B63" stroke-width="1.4" marker-end="url(#arrow)"/>
 
   <!-- TargetDir -->

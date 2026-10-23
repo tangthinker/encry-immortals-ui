@@ -7,13 +7,14 @@ import '../app_controller.dart';
 import '../window_title.dart';
 import '../theme.dart';
 import '../widgets/app_mark.dart';
+import '../widgets/workspace_switcher.dart';
 
 class StartupScreen extends StatelessWidget {
   const StartupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -75,9 +76,9 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('重置本地配置？'),
+        title: const Text('重置当前工作区？'),
         content: const Text(
-          '会删除应用数据目录里的 profile、config.toml 和本地控制平面（vault）。'
+          '会删除当前工作区的 profile、config.toml 和本地控制平面（vault）。'
           'TargetDir 与其他备份数据不会被动。',
         ),
         actions: [
@@ -121,7 +122,9 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.danger.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,7 +133,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                     children: [
                       const AppMark(size: 44),
                       const SizedBox(width: 14),
-                       Expanded(
+                      Expanded(
                         child: Text(
                           '无法启动',
                           style: TextStyle(
@@ -149,7 +152,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                   const SizedBox(height: 20),
                   Text(
                     error,
-                    style:  TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.6,
                       color: AppColors.muted,
@@ -166,7 +169,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.borderSoft),
                       ),
-                      child:  SelectableText(
+                      child: SelectableText(
                         '开发模式可用 EIMMORTAL_CORE_PATH 指向本地 sidecar：\n'
                         'EIMMORTAL_CORE_PATH=/path/to/eimmortal flutter run -d macos',
                         style: TextStyle(
@@ -182,10 +185,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                     const SizedBox(height: 14),
                     Text(
                       _actionError!,
-                      style:  TextStyle(
-                        fontSize: 12,
-                        color: AppColors.danger,
-                      ),
+                      style: TextStyle(fontSize: 12, color: AppColors.danger),
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -196,7 +196,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                       FilledButton.icon(
                         onPressed: _busy ? null : _retry,
                         icon: _busy
-                            ?  SizedBox(
+                            ? SizedBox(
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
@@ -208,15 +208,25 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                         label: const Text('重试'),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () =>
-                            controller.platform.revealPath(controller.paths.root),
+                        onPressed: () => controller.platform.revealPath(
+                          controller.paths.root,
+                        ),
                         icon: const Icon(Icons.folder_open_rounded, size: 17),
                         label: const Text('打开应用数据目录'),
                       ),
+                      if (controller.hasWorkspaces)
+                        OutlinedButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : () =>
+                                    showWorkspaceSwitcher(context, controller),
+                          icon: const Icon(Icons.swap_horiz_rounded, size: 17),
+                          label: const Text('切换工作区'),
+                        ),
                       TextButton(
                         onPressed: _busy ? null : _reset,
-                        child:  Text(
-                          '重置本地配置',
+                        child: Text(
+                          '重置当前工作区',
                           style: TextStyle(color: AppColors.danger),
                         ),
                       ),
@@ -225,7 +235,7 @@ class _StartupFailureScreenState extends State<StartupFailureScreen> {
                   const SizedBox(height: 18),
                   SelectableText(
                     'host: ${Platform.operatingSystem} · app data: ${controller.paths.root}',
-                    style:  TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Menlo',
                       fontSize: 10.5,
                       color: AppColors.faint,

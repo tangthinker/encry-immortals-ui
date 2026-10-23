@@ -92,22 +92,27 @@ class AppRoot extends StatelessWidget {
       color: theme.scaffoldBackgroundColor,
       child: AnimatedBuilder(
         animation: controller,
-      builder: (context, _) {
-        final screen = switch (controller.phase) {
-          AppPhase.starting => const StartupScreen(),
-          AppPhase.alreadyRunning => const AlreadyRunningScreen(),
-          AppPhase.failed => StartupFailureScreen(controller: controller),
-          AppPhase.onboarding => OnboardingScreen(controller: controller),
-          AppPhase.locked => UnlockScreen(controller: controller),
-          AppPhase.unlocked => MainShell(controller: controller),
-        };
+        builder: (context, _) {
+          final screen = switch (controller.phase) {
+            AppPhase.starting => const StartupScreen(),
+            AppPhase.alreadyRunning => const AlreadyRunningScreen(),
+            AppPhase.failed => StartupFailureScreen(controller: controller),
+            AppPhase.onboarding => OnboardingScreen(controller: controller),
+            AppPhase.locked => UnlockScreen(controller: controller),
+            AppPhase.unlocked => MainShell(controller: controller),
+          };
           return AnimatedSwitcher(
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
                 : const Duration(milliseconds: 180),
             switchInCurve: Curves.easeOut,
             switchOutCurve: Curves.easeIn,
-            child: KeyedSubtree(key: ValueKey(controller.phase), child: screen),
+            child: KeyedSubtree(
+              key: ValueKey(
+                '${controller.phase}-${controller.workspaceRevision}',
+              ),
+              child: screen,
+            ),
           );
         },
       ),
