@@ -37,12 +37,33 @@ flutter analyze                  No issues found
 flutter test                     96 passed, 3 skipped
 新增测试                         backup_continuation_test（6 个策略用例）
                                  backup_result_card_test（4 个按钮/状态用例）
+                                 continuous_backup_test（真实 sidecar 连续两轮提交）
 ```
+
+### 端到端验证
+
+用真实 sidecar 建立一个 1 MiB session 上限的临时库，源目录放 16 个 128 KiB 文件：
+
+```text
+round=1 seq=1 truncated=true  added=8  plain=1048576
+round=2 seq=2 truncated=false added=8  plain=1048576
+```
+
+说明“持续备份”只需要重复现有 `backup` 就能推进并结束。
+
+同时也验证了单个文件超过上限时 sidecar 会返回
+`truncated=true, changed=false, seq=0`；此时 UI 的无进展保护会停止并提示提高
+`session_max_mib`，不会无限重试。
 
 ### 发布
 
-- 版本：`0.3.0+5`
-- 需重新构建 universal / arm64 / Windows 三套包。
+- tag `v0.3.0`，commit `23eb390`
+- [GitHub Release](https://github.com/tangthinker/encry-immortals-ui/releases/tag/v0.3.0)：
+  - `Encry-Immortals-v0.3.0-macOS-universal.dmg/.zip`
+  - `Encry-Immortals-v0.3.0-macOS-arm64.dmg/.zip`
+  - `Encry-Immortals-0.3.0-Windows-x64.exe` 与 portable zip
+- 下载 arm64 zip 复验：主程序 `arm64`、sidecar `arm64`、
+  `CFBundleShortVersionString=0.3.0`、`codesign --verify --deep --strict` 通过。
 
 ---
 

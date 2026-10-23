@@ -199,7 +199,7 @@ dart run tool/verify_bundle.dart \
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                     # 96 个单元/组件测试，3 个 integration 默认跳过
+flutter --no-version-check test                     # 96 个单元/组件测试，4 个 integration 默认跳过
 RUN_CORE_INTEGRATION=1 \
 EIMMORTAL_CORE_PATH=/path/to/eimmortal \
   flutter --no-version-check test test/integration

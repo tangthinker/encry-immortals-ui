@@ -200,7 +200,7 @@ The release script signs the sidecar before hashing, copies it into `Contents/Re
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                     # 96 unit/widget tests, 3 integration skipped
+flutter --no-version-check test                     # 96 unit/widget tests, 4 integration skipped
 RUN_CORE_INTEGRATION=1 \
 EIMMORTAL_CORE_PATH=/path/to/eimmortal \
   flutter --no-version-check test test/integration
