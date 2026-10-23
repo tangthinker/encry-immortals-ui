@@ -415,6 +415,12 @@ jobs:
           body: |
             ## Encry Immortals ${{ github.ref_name }}
 
+            ### Highlights
+
+            - Backup page: when a run reaches `session_max_mib`, keep **继续备份** for one more run,
+              or use **持续备份到所有数据备份完毕** to repeat automatically until no data remains.
+              Continuous mode supports stopping between rounds and stops itself when a round makes no progress.
+
             ### macOS
 
             - Universal app: Apple Silicon + Intel (`x86_64 arm64`).
@@ -431,7 +437,7 @@ jobs:
             ### Quality
 
             - Flutter `3.47.5`, Go `1.27.1`, core `v0.1.5`.
-            - `flutter analyze`, 86 unit/widget tests, and sidecar SHA-256 verification.
+            - `flutter analyze`, 96 unit/widget tests, and sidecar SHA-256 verification.
           files: |
             dist/macos/*
             dist/macos-arm64/*

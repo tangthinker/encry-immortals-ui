@@ -18,12 +18,12 @@
   <a href="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml"><img alt="Release workflow" src="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml/badge.svg"></a>
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter&logoColor=white">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-86-2F7D63">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-96-2F7D63">
   <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-10161A">
 </p>
 
 > [!NOTE]
-> **状态：MVP，持续开发中。** 最新 release `v0.2.2` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
+> **状态：MVP，持续开发中。** 最新 release `v0.3.0` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
 > 独立的 **Apple Silicon arm64 构建**，以及 **Windows x64 安装包 + portable zip**。macOS 使用 ad-hoc 签名，未公证；
 > Windows 已由 CI 构建，但仍需在真实 Windows 宿主机验证并接入 Authenticode。
 
@@ -86,6 +86,7 @@ Encry Immortals 选择另一条路：
 |---|---|
 | **库生命周期** | 创建新库或加入已有 TargetDir；在第一条命令前选择存储、压缩、扫描、排除与完整性参数。 |
 | **增量备份** | 扫描 → 切片 → zstd → 加密 → pack。支持 dry-run、实时进度/日志、截断提示、继续备份和 `--break-lock` 恢复。 |
+| **持续备份** | 单次达到 `session_max_mib` 后，可保留“继续备份”再执行一次，或选择“持续备份到所有数据备份完毕”自动重复，并带停止与无进展保护。 |
 | **历史与恢复** | commit 列表、变更明细、指定 `seq` 的文件树；恢复前强制 `doctor --chain` 预检，检查缺失 pack，支持覆盖策略。 |
 | **完整性** | `verify --sample N` / `--deep` 与 chain doctor；PASS/WARN/FAIL、缺失/损坏/抽样失败均有明确展示。 |
 | **参数设置** | 集中编辑当前实现的所有参数：pack/slice/small-file 尺寸、zstd、排除规则、暂存目录、xattr、硬链接、读取中变化策略。 |
@@ -145,20 +146,20 @@ Encry Immortals 使用**应用内调度器**：
 
 **macOS universal**（`x86_64 + arm64`）：
 
-- [`Encry-Immortals-v0.2.2-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-universal.dmg)
-- [`Encry-Immortals-v0.2.2-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-universal.zip)
+- [`Encry-Immortals-v0.3.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.dmg)
+- [`Encry-Immortals-v0.3.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.zip)
 
 **macOS arm64**（Apple Silicon 专用）：
 
-- [`Encry-Immortals-v0.2.2-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.2.2-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-arm64.zip)
+- [`Encry-Immortals-v0.3.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.3.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.zip)
 
 打开任一 DMG，把 **Encry Immortals** 拖入“应用程序”。两个构建都是 ad-hoc 签名、未公证。
 
 **Windows x64**：
 
-- [`Encry-Immortals-0.2.2-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-0.2.2-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
-- [`Encry-Immortals-0.2.2-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-0.2.2-Windows-x64-portable.zip) — 免安装版本
+- [`Encry-Immortals-0.3.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
+- [`Encry-Immortals-0.3.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64-portable.zip) — 免安装版本
 
 Windows 产物目前**未签名**；Authenticode 与 Windows 实机验证仍在路线图中。
 
@@ -198,7 +199,7 @@ dart run tool/verify_bundle.dart \
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                     # 86 个单元/组件测试，3 个 integration 默认跳过
+flutter --no-version-check test                     # 96 个单元/组件测试，3 个 integration 默认跳过
 RUN_CORE_INTEGRATION=1 \
 EIMMORTAL_CORE_PATH=/path/to/eimmortal \
   flutter --no-version-check test test/integration

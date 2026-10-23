@@ -18,12 +18,12 @@
   <a href="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml"><img alt="Release workflow" src="https://github.com/tangthinker/encry-immortals-ui/actions/workflows/release.yml/badge.svg"></a>
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter&logoColor=white">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-86-2F7D63">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-96-2F7D63">
   <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-10161A">
 </p>
 
 > [!NOTE]
-> **Status: MVP, actively developed.** Latest release `v0.2.2` ships a **universal macOS build** (`x86_64 + arm64`),
+> **Status: MVP, actively developed.** Latest release `v0.3.0` ships a **universal macOS build** (`x86_64 + arm64`),
 > a dedicated **Apple Silicon build**, and a **Windows x64 installer + portable zip**. The macOS builds are ad-hoc signed
 > (not notarized); Windows is CI-built but still needs physical-host validation and Authenticode signing before wider distribution.
 
@@ -86,6 +86,7 @@ More screens: **[unlock](docs/assets/m1-unlock.jpg)** · **[history](docs/assets
 |---|---|
 | **Vault lifecycle** | Create a new vault or join an existing TargetDir with an Armor Key. Choose storage, compression, scan and integrity parameters before the first command. |
 | **Incremental backups** | Scan → chunk → zstd → encrypt → pack. Dry-run preview, live progress/logs, truncation notice, continue-later and `--break-lock` recovery. |
+| **Continuous backup** | When a run hits `session_max_mib`, keep **Continue** for one more run or choose **Keep backing up until complete**; it repeats safely with stop and no-progress guards. |
 | **History & restore** | Commit log, change detail, file tree at a chosen `seq`; restore with a hard `doctor --chain` preflight, missing-pack detection and overwrite policy. |
 | **Integrity** | `verify --sample N` / `--deep`, chain doctor, PASS/WARN/FAIL states, missing/corrupt/sample-failure reporting. |
 | **Parameter studio** | The implemented sidecar parameters in one place: pack/slice/small-file sizes, zstd level, excludes, staging directory, xattr policy, hardlinks and on-change strategy. |
@@ -146,20 +147,20 @@ The app **must be running and unlocked** for a scheduled backup to execute. The 
 
 **macOS universal** — latest release (`x86_64 + arm64`):
 
-- [`Encry-Immortals-v0.2.2-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-universal.dmg)
-- [`Encry-Immortals-v0.2.2-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-universal.zip)
+- [`Encry-Immortals-v0.3.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.dmg)
+- [`Encry-Immortals-v0.3.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-universal.zip)
 
 **macOS arm64** — dedicated Apple Silicon build:
 
-- [`Encry-Immortals-v0.2.2-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.2.2-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-v0.2.2-macOS-arm64.zip)
+- [`Encry-Immortals-v0.3.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.3.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-v0.3.0-macOS-arm64.zip)
 
 Open either DMG, drag **Encry Immortals** to Applications, and launch it. Both builds are ad-hoc signed and not notarized.
 
 **Windows x64** — latest release:
 
-- [`Encry-Immortals-0.2.2-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-0.2.2-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
-- [`Encry-Immortals-0.2.2-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.2.2/Encry-Immortals-0.2.2-Windows-x64-portable.zip) — portable build
+- [`Encry-Immortals-0.3.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
+- [`Encry-Immortals-0.3.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.3.0/Encry-Immortals-0.3.0-Windows-x64-portable.zip) — portable build
 
 The Windows artifacts are **unsigned**; Authenticode and physical Windows testing are still roadmap items.
 
@@ -199,7 +200,7 @@ The release script signs the sidecar before hashing, copies it into `Contents/Re
 
 ```bash
 flutter --no-version-check analyze
-flutter --no-version-check test                     # 86 unit/widget tests, 3 integration skipped
+flutter --no-version-check test                     # 96 unit/widget tests, 3 integration skipped
 RUN_CORE_INTEGRATION=1 \
 EIMMORTAL_CORE_PATH=/path/to/eimmortal \
   flutter --no-version-check test test/integration

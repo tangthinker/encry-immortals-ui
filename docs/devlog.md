@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-10-24 00:40 · 持续备份到所有数据备份完毕
+
+### 需求
+
+单次备份达到 `session_max_mib` 后，原来的“继续备份”只再执行一次。新增
+“持续备份到所有数据备份完毕”，自动重复提交，直到 sidecar 返回
+`truncated=false`；原来的“继续备份”保留。
+
+### 实现
+
+- `BackupPage` 的备份执行从单次调用抽成 `_runBackup` 循环：
+  - 每轮沿用当前提交信息，重置进度但保留日志；
+  - 每轮成功后刷新 Target Lock 和 data revision；
+  - 每轮失败立即停止并展示错误。
+- 循环只在 `summary.truncated=true` 时继续。
+- 两个安全阀：
+  - `backupHasProgress`：seq 没推进、或没有任何新增/修改/删除/目录/元数据/明文字节时停止；
+  - 最多 1000 轮，避免异常 sidecar 无限提交。
+- UI：
+  - 截断结果同时显示“继续备份”和“持续备份到所有数据备份完毕”；
+  - 持续备份期间显示轮次与“停止持续备份”；
+  - 停止请求在**当前这一轮完成后**生效，避免中途取消产生半截状态；
+  - 完成后显示共执行多少轮；无进展时提示可能是单个文件超过上限。
+- “持续备份”只在真实备份时显示；dry-run 截断仍只保留“继续备份”。
+
+### 验证
+
+```text
+flutter analyze                  No issues found
+flutter test                     96 passed, 3 skipped
+新增测试                         backup_continuation_test（6 个策略用例）
+                                 backup_result_card_test（4 个按钮/状态用例）
+```
+
+### 发布
+
+- 版本：`0.3.0+5`
+- 需重新构建 universal / arm64 / Windows 三套包。
+
+---
+
 ## 2026-10-23 00:50 · v0.2.2：恢复独立 macOS arm64 资产
 
 ### 背景
