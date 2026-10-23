@@ -417,6 +417,8 @@ jobs:
 
             ### Highlights
 
+            - New workspaces default to a **50 GB** per-session backup limit (51,200 MiB). Existing
+              workspaces keep their explicit configured limit.
             - Workspaces: create, import and switch multiple workspaces. Each workspace keeps its own
               `profile.json`, `config.toml` and local vault; existing single-workspace profiles are migrated on first launch.
             - Backup page: when a run reaches `session_max_mib`, keep **继续备份** for one more run,

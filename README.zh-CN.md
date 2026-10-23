@@ -23,7 +23,7 @@
 </p>
 
 > [!NOTE]
-> **状态：MVP，持续开发中。** 最新 release `v0.4.0` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
+> **状态：MVP，持续开发中。** 最新 release `v0.4.1` 提供 **macOS universal 构建**（`x86_64 + arm64`）、
 > 独立的 **Apple Silicon arm64 构建**、**Windows x64 安装包 + portable zip**，以及 **多个隔离工作区**。
 macOS 使用 ad-hoc 签名，未公证；
 > Windows 已由 CI 构建，但仍需在真实 Windows 宿主机验证并接入 Authenticode。
@@ -91,7 +91,7 @@ Encry Immortals 选择另一条路：
 | **持续备份** | 单次达到 `session_max_mib` 后，可保留“继续备份”再执行一次，或选择“持续备份到所有数据备份完毕”自动重复，并带停止与无进展保护。 |
 | **历史与恢复** | commit 列表、变更明细、指定 `seq` 的文件树；恢复前强制 `doctor --chain` 预检，检查缺失 pack，支持覆盖策略。 |
 | **完整性** | `verify --sample N` / `--deep` 与 chain doctor；PASS/WARN/FAIL、缺失/损坏/抽样失败均有明确展示。 |
-| **参数设置** | 集中编辑当前实现的所有参数：pack/slice/small-file 尺寸、zstd、排除规则、暂存目录、xattr、硬链接、读取中变化策略。 |
+| **参数设置** | 集中编辑当前实现的所有参数：pack/slice/small-file 尺寸、zstd、排除规则、暂存目录、xattr、硬链接、读取中变化策略。新工作区默认单次上限 **50 GB**；已有工作区保留自己的显式值。 |
 | **定时备份** | 每天/每周/每月指定时间，或每 N 分钟/小时/天。计划持久化；应用运行且已解锁时自动执行。 |
 | **桌面体验** | 原生菜单栏、`⌘1–5` / `⌘⇧B` / `⌘⇧R` / `⌘,` 快捷键、内容化窗口标题、侧边栏锁定、设置 tab、浅色/跟随系统/深色主题。 |
 | **应用保护** | 单实例文件锁、串行命令队列、运行中关闭守卫、release sidecar SHA-256 校验。 |
@@ -148,20 +148,20 @@ Encry Immortals 使用**应用内调度器**：
 
 **macOS universal**（`x86_64 + arm64`）：
 
-- [`Encry-Immortals-v0.4.0-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-universal.dmg)
-- [`Encry-Immortals-v0.4.0-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-universal.zip)
+- [`Encry-Immortals-v0.4.1-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-universal.dmg)
+- [`Encry-Immortals-v0.4.1-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-universal.zip)
 
 **macOS arm64**（Apple Silicon 专用）：
 
-- [`Encry-Immortals-v0.4.0-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.4.0-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-v0.4.0-macOS-arm64.zip)
+- [`Encry-Immortals-v0.4.1-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.4.1-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-arm64.zip)
 
 打开任一 DMG，把 **Encry Immortals** 拖入“应用程序”。两个构建都是 ad-hoc 签名、未公证。
 
 **Windows x64**：
 
-- [`Encry-Immortals-0.4.0-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-0.4.0-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
-- [`Encry-Immortals-0.4.0-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.0/Encry-Immortals-0.4.0-Windows-x64-portable.zip) — 免安装版本
+- [`Encry-Immortals-0.4.1-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-0.4.1-Windows-x64.exe) — Inno Setup 安装包（当前用户安装，不需要管理员权限）
+- [`Encry-Immortals-0.4.1-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-0.4.1-Windows-x64-portable.zip) — 免安装版本
 
 Windows 产物目前**未签名**；Authenticode 与 Windows 实机验证仍在路线图中。
 

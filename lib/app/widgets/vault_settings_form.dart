@@ -194,7 +194,7 @@ class VaultSettingsFormState extends State<VaultSettingsForm> {
               enabled: widget.enabled,
               label: '单次备份上限',
               suffix: 'MiB',
-              helper: '达到上限会截断本次提交，剩余留给下次',
+              helper: '默认 50 GB（51200 MiB）；达到上限会截断本次提交',
             );
             final compression = _SliderField(
               label: '压缩级别',

@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-10-24 01:35 · 默认单次备份上限改为 50 GB
+
+- `VaultSettings.sessionMaxMib` 默认值与 `fromJson` 缺失字段的回退值从 `1024` 改为 `51200`。
+- `51200 MiB = 50 GiB`，沿用项目现有的 MiB 存储单位；sidecar 的 `session_max_mib` 上限仍为 1048576。
+- 只影响新工作区和推荐参数；已有 profile/config 中显式写入的 `session_max_mib`
+  不会被静默改写。用户仍可在设置中手动调整。
+- 参数表单 helper、README、发布说明同步标注 50 GB 默认值。
+
+```text
+flutter test    102 passed, 5 integration skipped
+```
+
+版本：`0.4.1+7`，需要重新构建三平台安装包。
+
+---
+
 ## 2026-10-24 01:10 · 多工作区：新建 / 导入 / 切换
 
 ### 数据模型

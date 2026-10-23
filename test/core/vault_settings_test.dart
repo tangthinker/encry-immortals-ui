@@ -7,7 +7,7 @@ void main() {
     expect(defaults.packMaxBytes, 128 * 1024 * 1024);
     expect(defaults.slicePlainBytes, 32 * 1024 * 1024);
     expect(defaults.smallFileBytes, 64 * 1024 * 1024);
-    expect(defaults.sessionMaxMib, 1024);
+    expect(defaults.sessionMaxMib, 51200);
     expect(defaults.zstdLevel, 5);
     expect(defaults.ignoreXattr, isTrue);
     expect(defaults.validate(), isNull);

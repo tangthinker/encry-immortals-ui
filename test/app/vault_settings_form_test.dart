@@ -79,7 +79,7 @@ void main() {
     await tester.tap(find.text('恢复推荐值'));
     await tester.pumpAndSettle();
     final reset = key.currentState!.read();
-    expect(reset.sessionMaxMib, 1024);
+    expect(reset.sessionMaxMib, 51200);
     expect(reset.zstdLevel, 5);
     expect(reset.validate(), isNull);
   });
