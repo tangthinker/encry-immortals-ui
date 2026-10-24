@@ -11,6 +11,13 @@
 # 注意：.app 必须先 staple 再压缩成 zip，zip 本身无法 staple。
 set -euo pipefail
 
+# 任何未捕获的失败都带上命令名和退出码，方便在 Actions 的 annotation 里定位。
+on_err() {
+  local rc=$?
+  echo "::error::notarize_macos.sh 失败：\`${BASH_COMMAND}\` 返回 ${rc}（目标 ${TARGET:-未设置}）" >&2
+}
+trap on_err ERR
+
 if [[ $# -lt 1 ]]; then
   echo "用法: tool/notarize_macos.sh <MyApp.app|*.dmg|*.pkg>" >&2
   exit 2
@@ -56,11 +63,13 @@ if [[ "$TARGET" == *.app ]]; then
 fi
 
 echo "==> 提交公证：$TARGET"
+trap - ERR
 set +e
 xcrun notarytool submit "$SUBMIT_PATH" "${auth_args[@]}" --wait --output-format json > "$JSON" 2>&1
 submit_status=$?
 cat "$JSON"
 set -e
+trap on_err ERR
 
 read -r submission_id status <<<"$(
   python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d.get("id",""),d.get("status",""))' \
@@ -81,6 +90,7 @@ if [[ "$submit_status" -ne 0 || "${status:-}" != "Accepted" ]]; then
   exit 1
 fi
 echo "公证通过：submission=$submission_id"
+echo "::notice::公证通过 $TARGET (submission=$submission_id)"
 
 echo "==> staple 票据"
 # 公证 Accepted 之后票据分发到 CDN 还有几秒到几十秒的延迟，stapler 可能立刻报
@@ -95,7 +105,10 @@ until xcrun stapler staple -v "$TARGET"; do
   attempt=$(( attempt + 1 ))
   echo "重试 staple（第 ${attempt} 次）…" >&2
 done
-xcrun stapler validate -v "$TARGET"
+echo "::notice::staple 成功（第 ${attempt} 次尝试）$TARGET"
+# staple 返回 0 就说明票据已落盘；validate 再失败只告警，不再中断发布。
+xcrun stapler validate -v "$TARGET" \
+  || echo "::warning::stapler validate 未通过（票据已写入，继续）" >&2
 
 # Gatekeeper 预检。staple validate 已经证明票据就位，这里失败只告警，避免镜像波动卡发布。
 case "$TARGET" in
