@@ -23,10 +23,9 @@
 </p>
 
 > [!NOTE]
-> **Status: MVP, actively developed.** Latest release `v0.4.1` ships a **universal macOS build** (`x86_64 + arm64`),
+> **Status: MVP, actively developed.** Latest release `v0.4.2` ships a **universal macOS build** (`x86_64 + arm64`),
 > a dedicated **Apple Silicon build**, a **Windows x64 installer + portable zip**, and **multiple isolated workspaces**.
-> The macOS builds are ad-hoc signed
-> (not notarized); Windows is CI-built but still needs physical-host validation and Authenticode signing before wider distribution.
+> The macOS builds are Developer ID signed, notarized by Apple, and stapled; Windows is CI-built but still needs physical-host validation and Authenticode signing before wider distribution.
 
 ---
 
@@ -129,8 +128,8 @@ Flutter screens
 | **Scheduled runs** | The scheduler never stores or asks for the password. If the vault is locked at the scheduled time, it waits and catches up after unlock. |
 
 > [!IMPORTANT]
-> The current macOS release is **ad-hoc signed, not notarized**. If Gatekeeper blocks the app after download, right-click → Open, or run `xattr -dr com.apple.quarantine "Encry Immortals.app"`.
-> The release pipeline already supports Developer ID signing + notarization + stapling once the signing secrets are configured — see [docs/macos-signing.md](docs/macos-signing.md).
+> macOS builds are **Developer ID signed, notarized by Apple, and stapled** — download and launch directly, no Gatekeeper workaround needed.
+> Signing and notarization run in CI; the setup is documented in [docs/macos-signing.md](docs/macos-signing.md).
 
 ## Scheduled backups, honestly
 
@@ -149,20 +148,20 @@ The app **must be running and unlocked** for a scheduled backup to execute. The 
 
 **macOS universal** — latest release (`x86_64 + arm64`):
 
-- [`Encry-Immortals-v0.4.1-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-universal.dmg)
-- [`Encry-Immortals-v0.4.1-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-universal.zip)
+- [`Encry-Immortals-v0.4.2-macOS-universal.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.2/Encry-Immortals-v0.4.2-macOS-universal.dmg)
+- [`Encry-Immortals-v0.4.2-macOS-universal.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.2/Encry-Immortals-v0.4.2-macOS-universal.zip)
 
 **macOS arm64** — dedicated Apple Silicon build:
 
-- [`Encry-Immortals-v0.4.1-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-arm64.dmg)
-- [`Encry-Immortals-v0.4.1-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-v0.4.1-macOS-arm64.zip)
+- [`Encry-Immortals-v0.4.2-macOS-arm64.dmg`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.2/Encry-Immortals-v0.4.2-macOS-arm64.dmg)
+- [`Encry-Immortals-v0.4.2-macOS-arm64.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.2/Encry-Immortals-v0.4.2-macOS-arm64.zip)
 
-Open either DMG, drag **Encry Immortals** to Applications, and launch it. Both builds are ad-hoc signed and not notarized.
+Open either DMG, drag **Encry Immortals** to Applications, and launch it. Both builds are Developer ID signed, notarized by Apple, and stapled.
 
 **Windows x64** — latest release:
 
-- [`Encry-Immortals-0.4.1-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-0.4.1-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
-- [`Encry-Immortals-0.4.1-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.1/Encry-Immortals-0.4.1-Windows-x64-portable.zip) — portable build
+- [`Encry-Immortals-0.4.2-Windows-x64.exe`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.2/Encry-Immortals-0.4.2-Windows-x64.exe) — Inno Setup installer (per-user, no admin required)
+- [`Encry-Immortals-0.4.2-Windows-x64-portable.zip`](https://github.com/tangthinker/encry-immortals-ui/releases/download/v0.4.2/Encry-Immortals-0.4.2-Windows-x64-portable.zip) — portable build
 
 The Windows artifacts are **unsigned**; Authenticode and physical Windows testing are still roadmap items.
 
@@ -257,7 +256,7 @@ The app follows the same restraint: flat ink/brass/paper surfaces, system typogr
 ## Roadmap / known limitations
 
 - [ ] Validate Windows packaging, GUI-subsystem stdio, `LockFileEx` control locks and Authenticode signing.
-- [ ] Developer ID notarization + stapling; universal Apple Silicon / Intel release.
+- [x] Developer ID signing + notarization + stapling; universal Apple Silicon / Intel release.
 - [ ] Optional OS-level scheduling (launchd / Task Scheduler) with an explicit Keychain opt-in, so a backup can run while the app is closed.
 - [ ] Idle auto-lock and startup recovery for interrupted operations.
 - [ ] Multi-vault support and paginated snapshot browsing.

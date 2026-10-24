@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.2 — 2026-10-24
+
+### 变更
+
+- macOS 产物改为 **Developer ID 签名 + Apple 公证 + stapling**：安装后不再需要右键「打开」或执行
+  `xattr -dr com.apple.quarantine`，`.app` 与 `.dmg` 都带票据，离线也能通过 Gatekeeper 校验。
+- 签名、公证、stapling 全部在 GitHub Actions 完成，证书与公证凭据通过仓库 secrets 注入；
+  未配置 secrets 时自动回退 ad-hoc 签名。流程见 [`docs/macos-signing.md`](docs/macos-signing.md)。
+
+### 修复
+
+- 预发布标签（如 `0.4.2-rc1`）下 Windows 安装包编译失败：Inno Setup 的 `VersionInfoVersion`
+  只接受纯数字版本号，现由构建脚本剥离 `-rc` 后缀。
+- 公证票据分发延迟导致的偶发失败：`stapler` 增加退避重试，`stapler validate` 降级为告警。
+
 ## 0.4.1 — 2026-10-24
 
 ### 变更

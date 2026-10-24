@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-10-24 13:05 · macOS 签名 + 公证接入 CI，发布 v0.4.2
+
+- 证书：`Developer ID Application: Yubin Tang (5HTPR5F26Y)`，G2 Sub-CA；用 `security export -t identities`
+  导出 p12（新版 Keychain 界面已去掉「我的证书」分类，命令行更直接）。
+- 公证凭据用 App Store Connect API Key（`notarytool --key/--key-id/--issuer`），不用 App 专用密码。
+- CI 新增两个脚本：
+  - `tool/ci_import_signing_cert.sh`：临时钥匙串 + `security set-key-partition-list`（缺它 codesign 在无头
+    环境必报 `errSecInternalComponent`）。
+  - `tool/notarize_macos.sh`：提交、退避重试 staple、`spctl` 预检，失败自动抓 `notarytool log`。
+- `tool/build_macos.sh` 补 `sign_nested`：Xcode 模板把 `CODE_SIGN_IDENTITY` 写死成 `-`，
+  `App.framework` / `FlutterMacOS.framework` 必须自内向外换签，否则公证拒绝「code object 未签名」。
+- 顺序约束：`.app` 先公证 + staple 再压 zip；dmg 由 stapled 的 app 打包后单独签名、公证、staple。
+- `-rc` 标签只出 artifacts 不发 release；新增 `workflow_dispatch` + `dry_run` 输入。
+
+```text
+rc1: universal 全绿 / arm64 卡 stapler EX_NOHOST(68)
+rc2: 两个 macOS job 都卡 validate 68；Windows Go proxy 下载超时
+rc3: 全绿（staple 第 1~2 次尝试成功，四次公证均 Accepted）
+```
+
+### 决策
+
+- 失败码 68 = `EX_NOHOST`（票据未就绪）。票据 CDN 分发有秒级延迟：`staple` 加重试，
+  `validate` 降级为告警（staple 返回 0 已代表票据落盘）。
+- 公证不通过时让 job 硬失败，不静默放行 ad-hoc 包。
+
+### 发布
+
+- tag `v0.4.2`
+- macOS：`Encry-Immortals-v0.4.2-macOS-{universal,arm64}.dmg/.zip`，Developer ID 签名 + 公证 + stapled
+- Windows：`Encry-Immortals-0.4.2-Windows-x64.exe` + portable zip
+
+---
+
 ## 2026-10-24 01:35 · 默认单次备份上限改为 50 GB
 
 - `VaultSettings.sessionMaxMib` 默认值与 `fromJson` 缺失字段的回退值从 `1024` 改为 `51200`。
