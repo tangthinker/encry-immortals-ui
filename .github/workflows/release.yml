@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只构建，不发布 GitHub Release'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -384,6 +390,8 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: [macos, macos-arm64, windows]
+    # rc 标签和手动 dry-run 只产出 artifacts，不发 release。
+    if: ${{ (github.event_name == 'push' && !contains(github.ref_name, '-rc')) || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
     runs-on: ubuntu-latest
     env:
       MACOS_SIGNING_ENABLED: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
