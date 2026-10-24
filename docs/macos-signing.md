@@ -89,6 +89,7 @@ export NOTARY_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 | `The signature does not include a secure timestamp` | 漏 `--timestamp`，或 CI 出网被拦 |
 | `Invalid` 且日志提示 `is not in a standard location` | `Contents/Resources/bin/` 里的 sidecar 位置不被认可，可移到 `Contents/MacOS/` 或 `Contents/Frameworks/` |
 | 公证通过但 Gatekeeper 仍拦截 | `.app` 未 staple 就压缩；或用户机器离线 |
+| `stapler` 退出码 68 / `EX_NOHOST` | 公证刚 Accepted，票据还在向 CDN 分发；脚本已内置 5 次退避重试，仍失败就重跑该 job |
 
 公证失败时工作流会打印 `notarytool log`，里面有逐条 issue，改完重跑即可。
 

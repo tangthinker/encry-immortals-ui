@@ -354,6 +354,8 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $version = "${{ github.ref_name }}".TrimStart("v")
+          # Inno Setup 的 VersionInfo 字段只吃纯数字，预发布标签要去掉 -rc/-beta 后缀。
+          $numericVersion = ($version -split '-')[0]
           $isccCandidates = @(
             "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
             "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
@@ -364,7 +366,7 @@ jobs:
             $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           }
           if (-not $iscc) { throw "Inno Setup ISCC.exe not found" }
-          & $iscc "/DMyAppVersion=$version" "packaging\windows\encry-immortals.iss"
+          & $iscc "/DMyAppVersion=$version" "/DMyAppVersionNumeric=$numericVersion" "packaging\windows\encry-immortals.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
 
           $installer = "build\installer\Encry-Immortals-$version-Windows-x64.exe"

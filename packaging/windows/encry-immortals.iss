@@ -3,6 +3,10 @@
 #ifndef MyAppVersion
   #define MyAppVersion "0.2.0"
 #endif
+; VersionInfo* 只接受纯数字版本号，预发布标签（如 0.4.2-rc1）要由构建脚本另外传进来。
+#ifndef MyAppVersionNumeric
+  #define MyAppVersionNumeric MyAppVersion
+#endif
 
 #define MyAppName "Encry Immortals"
 #define MyAppPublisher "Encry Immortals"
@@ -34,11 +38,11 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 SetupLogging=yes
-VersionInfoVersion={#MyAppVersion}.0
+VersionInfoVersion={#MyAppVersionNumeric}.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} installer
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion={#MyAppVersion}
+VersionInfoProductVersion={#MyAppVersionNumeric}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

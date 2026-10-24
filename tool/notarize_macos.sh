@@ -83,7 +83,18 @@ fi
 echo "公证通过：submission=$submission_id"
 
 echo "==> staple 票据"
-xcrun stapler staple -v "$TARGET"
+# 公证 Accepted 之后票据分发到 CDN 还有几秒到几十秒的延迟，stapler 可能立刻报
+# EX_NOHOST(68) "not previously notarized"。重试是 Apple 推荐的处理方式。
+attempt=1
+until xcrun stapler staple -v "$TARGET"; do
+  if (( attempt >= 5 )); then
+    echo "::error::stapler 连续 ${attempt} 次失败，票据未能写入 $TARGET" >&2
+    exit 1
+  fi
+  sleep $(( attempt * 15 ))
+  attempt=$(( attempt + 1 ))
+  echo "重试 staple（第 ${attempt} 次）…" >&2
+done
 xcrun stapler validate -v "$TARGET"
 
 # Gatekeeper 预检。staple validate 已经证明票据就位，这里失败只告警，避免镜像波动卡发布。
